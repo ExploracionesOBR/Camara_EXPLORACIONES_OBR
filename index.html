@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>DETECTOR-OBR v39.5 (FINAL POLISHED)</title> 
+    <title>DETECTOR-OBR v41.0 (PARANORMAL FINAL)</title> 
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -166,8 +166,7 @@
         #timer-panel { font-family: 'Creepster'; font-size: 1.2rem; color: var(--hud-red); text-shadow: 0 0 5px red; animation: pulseRed 3s infinite; letter-spacing: 1px; line-height: 1; opacity: 0.65; }
         #timer-label { font-size: 0.4rem; color: #555; letter-spacing: 1px; font-family: 'Orbitron'; margin-bottom: 1px; }
 
-        #follow-sequence, #stats-display, #btn-play-intro { transition: opacity 0.5s ease, transform 0.5s ease; }
-        #follow-sequence { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 30; text-align: center; pointer-events: none; width: 100%; display: flex; justify-content: center; }
+        #follow-sequence { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 30; text-align: center; pointer-events: none; width: 100%; display: flex; justify-content: center; transition: opacity 0.5s ease; }
         .seq-item { display: none; animation: glitchText 0.2s infinite; filter: drop-shadow(0 0 5px var(--hud-cyan)); }
         #seq-text { font-family: 'Orbitron'; font-size: 1rem; color: white; letter-spacing: 3px; }
         #seq-icons { font-size: 2rem; gap: 20px; color: white; }
@@ -178,7 +177,7 @@
         #bottom-banner.active { opacity: 1; transform: translateY(0); }
         #banner-vid { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
 
-        #btn-play-intro { position: absolute; bottom: 5px; left: 10px; z-index: 100; pointer-events: auto; font-size: 1.5rem; color: white; cursor: pointer; filter: drop-shadow(0 0 5px black); }
+        #btn-play-intro { position: absolute; bottom: 5px; left: 10px; z-index: 100; pointer-events: auto; font-size: 1.5rem; color: white; cursor: pointer; filter: drop-shadow(0 0 5px black); transition: opacity 0.5s ease; }
         #btn-play-intro:active { transform: scale(0.9); }
         
         /* INTRO TRANSICIÓN PELICULA */
@@ -210,9 +209,9 @@
         #stats-timer-container { display: none; color: var(--hud-red); font-weight: bold; font-family: 'Creepster'; letter-spacing: 1px; text-shadow: 0 0 5px red; opacity: 0.65; }
         #app-ui.full-mode #stats-timer-container { display: block; }
 
-        /* UI HIDDEN STATES */
-        .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; }
-        .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; }
+        /* UI HIDDEN STATES (SOLO MODE) */
+        .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; transition: 0.5s; }
+        .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; transition: 0.5s; }
 
         /* MIXER */
         #mixer-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 95vw; max-width: 800px; height: 80vh; background: rgba(10, 12, 18, 0.65); border: 1px solid var(--hud-cyan); z-index: 2000; display: none; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; transition: 0.3s; opacity: 0; pointer-events: none; backdrop-filter: blur(5px); }
@@ -268,17 +267,6 @@
         .playback-content { width: 90%; max-width: 800px; aspect-ratio: 16/9; background: black; border: 2px solid var(--hud-cyan); position: relative; }
         #playback-canvas { width: 100%; height: 100%; object-fit: contain; }
         
-        /* THEME BUTTON SELECTED */
-        .theme-btn-active { background: rgba(255,255,255,0.1); border: 2px solid white; box-shadow: 0 0 15px white; }
-        
-        /* GESTURE INDICATOR (BOKEH) */
-        #gesture-indicator {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 120px; height: 120px; border-radius: 50%;
-            border: 8px solid transparent; border-top-color: var(--hud-orange); border-left-color: var(--hud-orange);
-            display: none; z-index: 55; animation: spin 1s linear infinite; opacity: 0.8;
-        }
-
         .hidden { display: none !important; }
     </style>
 </head>
@@ -295,6 +283,7 @@
         <div id="btn-settings-gear" onclick="openSettings()"><i class="fas fa-cog"></i></div>
     </div>
 
+    <!-- SETTINGS MODAL -->
     <div id="settings-modal">
         <div id="settings-gate" class="flex flex-col items-center justify-center h-full w-full">
             <h2 class="text-xl font-orbitron text-red-500 mb-2">ACCESO RESTRINGIDO</h2>
@@ -310,15 +299,15 @@
                     <div class="nav-btn active" onclick="switchTab('tab-api', this)">API KEY</div>
                     <div class="nav-btn" onclick="switchTab('tab-studio', this)">ESTUDIO SLS</div>
                     <div class="nav-btn" onclick="switchTab('tab-storage', this)">ARCHIVOS</div>
-                    <div class="nav-btn" onclick="switchTab('tab-themes', this)">TEMAS</div>
                     <button class="btn-action mt-auto text-xs" onclick="exitToMain()">SALIR AL INICIO</button>
                 </div>
                 <div class="settings-content-area">
                     <div id="tab-api" class="settings-tab-content active">
                         <label class="text-xs text-red-400">GEMINI API KEY</label>
+                        <!-- BOTON API RESTAURADO Y FUNCIONAL -->
                         <div class="flex gap-2 mb-2">
                             <input type="password" id="api-key-internal" class="w-full bg-black border border-red-900 p-2 text-white text-xs">
-                            <a href="https://aistudio.google.com/api-keys" target="_blank" class="btn-action w-12 flex items-center justify-center p-0 m-0" style="margin-top:0;">📲</a>
+                            <a href="https://aistudio.google.com/api-keys" target="_blank" class="btn-action w-12 flex items-center justify-center p-0 m-0" style="margin-top:0; text-decoration:none; color:white; font-size:1.5rem;">📲</a>
                         </div>
                         <button class="btn-action" id="btn-validate-api" onclick="validateAndSaveKey()">VALIDAR Y GUARDAR</button>
                         <div id="api-status-msg" class="text-xs font-mono mt-2 text-center text-yellow-500"></div>
@@ -336,15 +325,12 @@
                         <button class="btn-action" onclick="document.getElementById('file-upload').click()">CARGAR JSON</button>
                         <input type="file" id="file-upload" class="hidden" accept=".json" onchange="importMemories(this)">
                     </div>
-                    <div id="tab-themes" class="settings-tab-content">
-                         <button id="theme-cyan" class="btn-action theme-btn-active" style="border-color: #00f3ff; color: #00f3ff;" onclick="changeTheme('cyan', this)">CLASICO (CYAN)</button>
-                         <button id="theme-red" class="btn-action" style="border-color: #ff3333; color: #ff3333;" onclick="changeTheme('red', this)">NIGHTMARE (ROJO)</button>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- STUDIO STANDALONE -->
     <div id="studio-standalone-container">
         <div id="studio-video-slot" class="studio-video-slot">
             <canvas id="studio-sls-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-20 object-cover"></canvas>
@@ -352,7 +338,7 @@
         <div class="studio-ui-layer">
             <div class="studio-top-bar">
                 <div class="text-white font-mono text-sm bg-black/50 p-2 rounded">
-                    ESTUDIO SLS <span class="text-xs text-gray-400">v39.5</span><br>
+                    ESTUDIO SLS <span class="text-xs text-gray-400">v41.0</span><br>
                     <span id="studio-frame-counter" class="text-yellow-400 font-bold">0 FRAMES</span>
                 </div>
                 <div class="studio-exit-btn" onclick="exitStudioMode()"><i class="fas fa-times"></i></div>
@@ -365,6 +351,7 @@
         </div>
     </div>
 
+    <!-- PLAYBACK MODAL -->
     <div id="playback-modal">
         <div class="playback-content">
             <canvas id="playback-canvas"></canvas>
@@ -372,6 +359,7 @@
         </div>
     </div>
 
+    <!-- LIVE UI PRINCIPAL -->
     <div id="app-ui">
         <div id="left-panel">
             <div class="mb-2 text-center border-b border-cyan-900 pb-1" onclick="exitToMain()" style="cursor: pointer;">
@@ -412,6 +400,7 @@
 
         <div id="main-view-area">
             <div id="zoom-container">
+                <!-- SLOT PARA EL VIDEO EN MODO LIVE -->
                 <div id="live-video-slot" class="w-full h-full absolute inset-0"></div>
                 <canvas id="sls-canvas"></canvas>
             </div>
@@ -427,8 +416,6 @@
                 <img id="ai-generated-image" src="" alt="Anomaly">
             </div>
             
-            <div id="gesture-indicator"></div>
-
             <div id="zoom-target-indicator"></div>
             <div id="anomaly-pip">⚠ ANOMALY: REPLAY</div>
             <div id="sls-status-pip">🟢 SLS ACTIVO</div>
@@ -533,11 +520,8 @@
     let smoothedProx = 0;
     let lastGhostTime = 0;
     let nextGhostInterval = 10000;
-    
-    // MINI SLS VARS
     let lastBoxSize = 0;
     let lastPersonDetectedTs = 0;
-    
     let fakeLogInterval;
     let timerInterval;
     let isBannerActive = false;
@@ -546,10 +530,6 @@
     let systemStartTime = 0;
     let zoomTimer = null;
     let currentZoomLevel = 1;
-
-    // Gesture
-    let gestureTimer = 0;
-    let gestureTriggered = false;
 
     // Mixer
     let mixerAudioCtx, mixerPeer, mixerMasterOut, mixerMonitorOut;
@@ -565,8 +545,6 @@
     window.onload = async () => {
         const k = localStorage.getItem("obr_gemini_key");
         if(k) GEMINI_API_KEY = k;
-        const savedTheme = localStorage.getItem("obr_theme");
-        if(savedTheme) changeTheme(savedTheme, document.getElementById(savedTheme === 'red' ? 'theme-red' : 'theme-cyan'));
 
         checkApiKey();
         loadMemories();
@@ -666,6 +644,7 @@
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
         } catch(e) {
+            console.warn("HD Cam failed, retrying VGA");
             constraints = { video: { facingMode: 'environment' }, audio: false };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
@@ -772,8 +751,6 @@
         } catch(e){}
 
         if (poses.length > 0) {
-             checkBokehGesture(poses);
-
              if (currentFilter === 'sls') {
                 drawSkeleton(poses, ctxLive);
                 let minX=10000, maxX=0, minY=10000, maxY=0;
@@ -800,34 +777,6 @@
         }
     }
 
-    function checkBokehGesture(poses) {
-        const centerBox = {xMin: video.videoWidth*0.4, xMax: video.videoWidth*0.6, yMin: video.videoHeight*0.4, yMax: video.videoHeight*0.6};
-        let handDetected = false;
-        poses.forEach(p => {
-            p.keypoints.forEach(k => {
-                if((k.name === 'right_wrist' || k.name === 'left_wrist') && k.score > 0.6) {
-                    if(k.x > centerBox.xMin && k.x < centerBox.xMax && k.y > centerBox.yMin && k.y < centerBox.yMax) {
-                        handDetected = true;
-                    }
-                }
-            });
-        });
-        const ind = document.getElementById('gesture-indicator');
-        if(handDetected) {
-            ind.style.display = 'block';
-            gestureTimer++;
-            if(gestureTimer > 40) { 
-                setFilter(currentFilter === 'bokeh' ? 'normal' : 'bokeh');
-                gestureTimer = 0;
-                ind.style.display = 'none';
-                speakText(currentFilter === 'bokeh' ? "BOKEH" : "NORMAL");
-            }
-        } else {
-            gestureTimer = 0;
-            ind.style.display = 'none';
-        }
-    }
-
     function initSensors() {
         if ('Magnetometer' in window) {
             try { const m = new Magnetometer({frequency:10}); m.addEventListener('reading', () => updateSensorUI(Math.sqrt(m.x**2+m.y**2+m.z**2))); m.start(); } catch(e){ startSensorSim(); }
@@ -839,13 +788,18 @@
             let detected = false; let area = 0;
             if (now - lastPersonDetectedTs < 500) { detected = true; area = lastBoxSize; } 
             else {
+                // MINI SLS FIX (USE 1 POSE FOR PROX EVEN IF SLS OFF)
                 if (currentFilter !== 'sls' && !isInStudioMode && detector) {
                      try {
                          const p = await detector.estimatePoses(video, {maxPoses: 1});
                          if(p.length > 0) {
                              detected = true;
+                             // Approximate area
                              let minX=10000, maxX=0, minY=10000, maxY=0;
-                             p[0].keypoints.forEach(k => { if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; });
+                             p[0].keypoints.forEach(k => { 
+                                 if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
+                                 if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
+                             });
                              area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
                          }
                      } catch(e) {}
@@ -859,8 +813,14 @@
                 if(dist>15) dist=15; if(dist<0.1) dist=0.1;
                 distDisplay = dist.toFixed(1);
             } 
+
             smoothedProx += (targetProx - smoothedProx) * 0.15;
-            const bar = document.getElementById('prox-bar'); const val = document.getElementById('prox-val'); const cont = document.getElementById('prox-val-container'); const dist = document.getElementById('dist-val');
+            
+            const bar = document.getElementById('prox-bar');
+            const val = document.getElementById('prox-val');
+            const cont = document.getElementById('prox-val-container');
+            const dist = document.getElementById('dist-val');
+            
             if(bar && val && cont) {
                 const finalVal = Math.floor(smoothedProx);
                 bar.style.width = finalVal + "%"; val.innerText = finalVal;
@@ -914,22 +874,6 @@
     }
     function switchTab(id, btn) { document.querySelectorAll('.settings-tab-content').forEach(d=>d.classList.remove('active')); document.getElementById(id).classList.add('active'); document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
     
-    // THEME SWITCHER
-    function changeTheme(theme, btn) {
-        const root = document.documentElement;
-        if(theme === 'red') {
-            root.setAttribute('data-theme', 'red');
-            localStorage.setItem('obr_theme', 'red');
-        } else {
-            root.removeAttribute('data-theme');
-            localStorage.setItem('obr_theme', 'cyan');
-        }
-        if(btn) {
-            document.querySelectorAll('#tab-themes .btn-action').forEach(b => b.classList.remove('theme-btn-active'));
-            btn.classList.add('theme-btn-active');
-        }
-    }
-
     async function validateAndSaveKey() {
         const input = document.getElementById('api-key-internal');
         const btn = document.getElementById('btn-validate-api');
@@ -959,7 +903,7 @@
         const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 360;
         canvas.getContext('2d').drawImage(video, 0, 0, 640, 360);
         const base64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-        const prompt = "Describe en 6 palabras algo macabro.";
+        const prompt = "Actúa como un detector de fenómenos paranormales. Analiza la imagen y describe brevemente una entidad (fantasma, sombra, energía) que detectes escondida en un objeto físico específico (pared, puerta, ventana, mueble). Sé realista y directo. Ejemplo: 'Una sombra oscura te observa desde esa ventana'.";
         
         const txtDiv = document.getElementById('ai-feedback-text');
         txtDiv.innerText = "ANALIZANDO...";
@@ -971,8 +915,10 @@
             });
             const data = await resp.json();
             let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
-            text = text.replace(/[*_]/g, ''); 
             
+            // Advanced cleaning
+            text = text.replace(/^(Objeto:|Descripción:|Veo:|1\.|-)\s*/i, '').replace(/[*_]/g, '').trim();
+
             const overlay = document.getElementById('ai-feedback-overlay');
             const imgDiv = document.getElementById('ai-generated-image');
             
@@ -1026,6 +972,7 @@
             currentFilter = 'normal';
             if(btn) btn.classList.remove('active');
             document.body.className = '';
+            toggleTorch(false); // Ensure off
             return;
         }
         currentFilter = f; document.body.className = ''; 
@@ -1119,25 +1066,24 @@
         if(isBannerActive) { 
             ban.style.display = 'block'; 
             setTimeout(() => ban.classList.add('active'), 10); 
-            vid.play().catch(e => { toggleBanner(); }); 
             
+            // HIDE UI ELEMENTS (SOLO MODE)
             if(btn) btn.classList.add('active'); 
-            
-            // HIDE UI ELEMENTS
             if(introBtn) introBtn.classList.add('pop-out');
             if(stats) stats.classList.add('pop-out');
             if(follow) follow.style.opacity = '0';
             
-            bannerTimeout = setTimeout(() => { if(isBannerActive) toggleBanner(); }, 60000);
+            vid.play().catch(e => { toggleBanner(); }); // Close if fail
+            bannerTimeout = setTimeout(() => { if(isBannerActive) toggleBanner(); }, 60000); // 1 Min Auto Close
+            
         } else { 
             ban.classList.remove('active'); 
             setTimeout(() => ban.style.display = 'none', 600); 
             vid.pause(); 
             vid.currentTime = 0; 
             
-            if(btn) btn.classList.remove('active'); 
-            
             // SHOW UI ELEMENTS
+            if(btn) btn.classList.remove('active'); 
             if(introBtn) introBtn.classList.remove('pop-out');
             if(stats) stats.classList.remove('pop-out');
             if(follow) follow.style.opacity = '1';
@@ -1189,8 +1135,8 @@
         }
     }
 
-    function seedInitialLogs() { ["Kernel... OK", "Sensores... OK", "Neural... OK", "Sistema OBR v39.3 activo"].forEach(msg => updateLog(msg)); }
-    async function runFollowSequence() { const txt = document.getElementById('seq-text'); const icons = document.getElementById('seq-icons'); const han = document.getElementById('seq-handle'); const container = document.getElementById('follow-sequence'); while(true) { if(isBannerActive) { await wait(1000); continue; } else container.style.display = 'flex'; txt.style.display = 'block'; await wait(2500); txt.style.display = 'none'; icons.style.display = 'block'; await wait(2500); icons.style.display = 'none'; han.style.display = 'block'; await wait(3500); han.style.display = 'none'; await wait(8000); } }
+    function seedInitialLogs() { ["Kernel... OK", "Sensores... OK", "Neural... OK", "Sistema OBR v41.0 activo"].forEach(msg => updateLog(msg)); }
+    async function runFollowSequence() { const txt = document.getElementById('seq-text'); const icons = document.getElementById('seq-icons'); const han = document.getElementById('seq-handle'); const container = document.getElementById('follow-sequence'); while(true) { if(isBannerActive) { container.style.display = 'none'; await wait(5000); continue; } else container.style.display = 'flex'; txt.style.display = 'block'; await wait(2500); txt.style.display = 'none'; icons.style.display = 'block'; await wait(2500); icons.style.display = 'none'; han.style.display = 'block'; await wait(3500); han.style.display = 'none'; await wait(8000); } }
     function wait(ms){return new Promise(r=>setTimeout(r,ms));}
     async function toggleMixerWindow() { const w=document.getElementById('mixer-window'); if(!w.classList.contains('active')){ w.classList.add('active'); if(!isMixerInitialized) { await initAudioEngine(); await initPeerSystem(); } } else w.classList.remove('active'); }
     async function initAudioEngine() { if(!mixerAudioCtx) mixerAudioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume(); if(!mixerMasterOut) { mixerMasterOut = mixerAudioCtx.createGain(); mixerMonitorOut = mixerAudioCtx.createGain(); mixerMasterOut.connect(mixerMonitorOut); mixerMonitorOut.connect(mixerAudioCtx.destination); setupVuMeter(mixerMasterOut, 'vu-master'); } }
