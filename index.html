@@ -104,6 +104,7 @@
         #zoom-container { 
             width: 100%; height: 100%; transform-origin: center center; 
             transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            position: relative;
         }
         
         #shared-video-element { 
@@ -119,8 +120,16 @@
         .filter-night-vision #shared-video-element { filter: grayscale(100%) contrast(1.4) brightness(1.3) sepia(100%) hue-rotate(90deg) saturate(200%); }
         .filter-night-vision #main-view-area::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, rgba(0, 255, 50, 0.05) 40%, rgba(0,0,0,0.6) 95%); background-image: repeating-linear-gradient(0deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02) 1px, transparent 1px, transparent 3px); z-index: 5; mix-blend-mode: hard-light; }
         
+        /* CORRECCION TERMICA */
         .filter-negative #shared-video-element { 
-            filter: invert(1) grayscale(100%) contrast(2.0) brightness(1.2); 
+            /* Heatmap fake style */
+            filter: grayscale(100%) contrast(300%) invert(1) hue-rotate(180deg) saturate(300%);
+        }
+        .filter-negative #main-view-area::after {
+            /* Tint overlay to create blue/red effect */
+            content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5; 
+            background: linear-gradient(180deg, rgba(0,0,255,0.2) 0%, rgba(255,0,0,0.1) 50%, rgba(255,255,0,0.2) 100%);
+            mix-blend-mode: overlay;
         }
         
         .filter-bokeh #main-view-area::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5; backdrop-filter: blur(8px); mask-image: radial-gradient(circle at center, transparent 30%, black 90%); }
@@ -173,7 +182,8 @@
         #seq-handle { font-family: 'Share Tech Mono'; font-size: 1.2rem; color: var(--hud-cyan); }
         @keyframes glitchText { 0% { transform: translate(0); } 20% { transform: translate(-1px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-1px, -1px); } 80% { transform: translate(1px, 1px); } 100% { transform: translate(0); } }
 
-        #bottom-banner { position: absolute; bottom: 0; left: 0; width: 100%; height: 150px; z-index: 35; display: none; background: black; border-top: 2px solid var(--hud-red); opacity: 0; transform: translateY(100%); transition: 0.6s ease; }
+        /* BANNER REDUCIDO */
+        #bottom-banner { position: absolute; bottom: 0; left: 0; width: 100%; height: 75px; z-index: 35; display: none; background: black; border-top: 2px solid var(--hud-red); opacity: 0; transform: translateY(100%); transition: 0.6s ease; }
         #bottom-banner.active { opacity: 1; transform: translateY(0); }
         #banner-vid { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
 
@@ -200,8 +210,26 @@
 
         #anomaly-pip { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 0, 0, 0.2); border: 1px solid red; color: red; font-family: 'Orbitron'; font-size: 0.7rem; padding: 2px 8px; display: none; animation: pulseRed 0.5s infinite; z-index: 60; }
         #sls-status-pip { position: absolute; top: 35px; left: 10px; font-family: 'Share Tech Mono'; font-size: 0.6rem; color: var(--hud-green); z-index: 60; display: none; text-shadow: 0 0 5px #0f0; }
-        #top-right-logo { position: absolute; top: 15px; right: 70px; z-index: 40; width: 50px; opacity: 0.8; transition: 0.3s; animation: logoGlitch 5s infinite; }
-        @keyframes logoGlitch { 0%, 95% { transform: translate(0,0); filter: none; } 96% { transform: translate(-2px, 2px); filter: hue-rotate(90deg); } 97% { transform: translate(2px, -2px); filter: hue-rotate(-90deg); } 98% { transform: translate(0,0); opacity: 0.5; } 100% { transform: translate(0,0); opacity: 0.8; } }
+        
+        /* LOGO GLITCH MOVIDO */
+        #top-right-logo { 
+            position: absolute; top: 15px; right: 5px; z-index: 40; width: 50px; 
+            opacity: 0.8; transition: 0.3s; 
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(71% 0 10% 0); transform: translate(-2px, 1px); filter: hue-rotate(0deg); }
+            10% { clip-path: inset(12% 0 81% 0); transform: translate(1px, -1px); filter: hue-rotate(90deg); }
+            20% { clip-path: inset(86% 0 9% 0); transform: translate(-1px, 2px); filter: invert(1); }
+            30% { clip-path: inset(4% 0 46% 0); transform: translate(2px, -2px); }
+            40% { clip-path: inset(36% 0 58% 0); transform: translate(-2px, 1px); filter: hue-rotate(-90deg); }
+            50% { clip-path: inset(93% 0 5% 0); transform: translate(1px, -1px); }
+            60% { clip-path: inset(23% 0 66% 0); transform: translate(-1px, 2px); }
+            70% { clip-path: inset(62% 0 25% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(16% 0 73% 0); transform: translate(-2px, 1px); }
+            90% { clip-path: inset(51% 0 32% 0); transform: translate(1px, -1px); }
+            100% { clip-path: inset(100% 0 0% 0); transform: translate(0); filter: none;}
+        }
 
         #zoom-target-indicator { position: absolute; width: 40px; height: 40px; border: 2px solid var(--hud-green); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 25; }
         
@@ -221,7 +249,13 @@
         .mixer-controls-left { position: absolute; left: 15px; }
         #mixer-content { flex: 1; overflow-x: auto; padding: 20px; display: flex; gap: 10px; }
         .channel-strip { background: rgba(20,20,25,0.8); border: 1px solid #333; border-radius: 6px; padding: 10px 5px; display: flex; flex-direction: column; align-items: center; width: 90px; min-width: 90px; height: 320px; gap: 10px; }
-        .strip-title { cursor: text; border-bottom: 1px dashed #555; padding-bottom: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 0.7rem; }
+        
+        /* NEW STYLES FOR EDITABLE TITLE AND CLOSE BTN */
+        .strip-name-input { background: transparent; border: none; border-bottom: 1px dotted #555; color: var(--hud-cyan); font-family: 'Share Tech Mono'; font-size: 0.7rem; width: 100%; text-align: center; margin-bottom: 5px; }
+        .strip-name-input:focus { border-bottom: 1px solid var(--hud-green); }
+        .btn-disconnect { font-size: 0.6rem; color: var(--hud-red); border: 1px solid var(--hud-red); padding: 0px 4px; cursor: pointer; align-self: flex-end; margin-bottom: 2px; border-radius: 2px; transition: 0.2s; }
+        .btn-disconnect:hover { background: var(--hud-red); color: white; }
+        
         .fader-group { flex: 1; width: 100%; display: flex; justify-content: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 10px 0; border-radius: 4px; }
         input[type=range][orient=vertical] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 40px; height: 100%; accent-color: var(--hud-cyan); }
         .vu-meter-wrap { width: 12px; height: 100%; background: #111; position: relative; border-radius: 2px; overflow: hidden; }
@@ -304,7 +338,6 @@
                 <div class="settings-content-area">
                     <div id="tab-api" class="settings-tab-content active">
                         <label class="text-xs text-red-400">GEMINI API KEY</label>
-                        <!-- BOTON API RESTAURADO Y FUNCIONAL -->
                         <div class="flex gap-2 mb-2">
                             <input type="password" id="api-key-internal" class="w-full bg-black border border-red-900 p-2 text-white text-xs">
                             <a href="https://aistudio.google.com/api-keys" target="_blank" class="btn-action w-12 flex items-center justify-center p-0 m-0" style="margin-top:0; text-decoration:none; color:white; font-size:1.5rem;">📲</a>
@@ -530,15 +563,18 @@
     let systemStartTime = 0;
     let zoomTimer = null;
     let currentZoomLevel = 1;
+    let wakeLock = null;
 
     // Mixer
     let mixerAudioCtx, mixerPeer, mixerMasterOut, mixerMonitorOut;
-    let mixerNodes = {};
+    let mixerNodes = {}; // Tracks connected remote nodes: { id: { source, gain, audioEl, call } }
     let isMixerInitialized = false;
     let savedMasterVol = 1;
 
-    // WATCHDOG INTRO
-    let introWatchdog;
+    // SLS SCALING LOGIC
+    let ghostScaleFactor = 1;
+    let ghostOffsetX = 0;
+    let ghostOffsetY = 0;
 
     window.onerror = function(msg, url, line, col, error) { console.log("Global Error: " + msg); return false; };
 
@@ -588,12 +624,26 @@
         const btn = document.getElementById('btn-pareidolia');
         if(!GEMINI_API_KEY) btn.style.display = 'none'; else btn.style.display = 'flex';
     }
+    
+    // WAKE LOCK IMPLEMENTATION (FORZAR CAMARA MAXIMO)
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => { console.log('Wake Lock released'); });
+            }
+        } catch (err) { console.error(`${err.name}, ${err.message}`); }
+    }
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
+    });
 
     async function handleInitialLoad() {
         const btn = document.getElementById('btn-enter-system');
         btn.disabled = true; btn.innerText = "CARGANDO MOTORES...";
         
         try {
+            await requestWakeLock(); // Prevent sleep
             if(!window.tf) await waitForTF();
             await initAI();
             await initCamera(); 
@@ -639,15 +689,31 @@
     }
 
     async function initCamera() {
-        let constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
+        // High Performance request (4K 60FPS to 120FPS try)
+        let constraints = { 
+            video: { 
+                facingMode: 'environment', 
+                width: { ideal: 3840, max: 3840 }, 
+                height: { ideal: 2160, max: 2160 }, 
+                frameRate: { ideal: 60, max: 120 } 
+            }, 
+            audio: false 
+        };
         try {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
         } catch(e) {
-            console.warn("HD Cam failed, retrying VGA");
-            constraints = { video: { facingMode: 'environment' }, audio: false };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = stream;
+            console.warn("Max Specs Camera failed, retrying standard HD");
+            constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch(e2) {
+                console.warn("HD failed, fallback VGA");
+                constraints = { video: { facingMode: 'environment' }, audio: false };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            }
         }
         return new Promise((resolve) => {
             video.onloadedmetadata = () => { video.play(); resizeCanvases(); resolve(); };
@@ -707,6 +773,9 @@
                 document.getElementById('fps-val').innerText = frameCount;
                 frameCount = 0; lastFpsTime = now;
             }
+            // Keep video playing hack for freeze issue
+            if(video.paused && video.srcObject) video.play().catch(()=>{});
+
             if (isInStudioMode) renderStudio(); else renderLive(now);
         }
         loop();
@@ -788,21 +857,19 @@
             let detected = false; let area = 0;
             if (now - lastPersonDetectedTs < 500) { detected = true; area = lastBoxSize; } 
             else {
-                // MINI SLS FIX (USE 1 POSE FOR PROX EVEN IF SLS OFF)
                 if (currentFilter !== 'sls' && !isInStudioMode && detector) {
-                     try {
-                         const p = await detector.estimatePoses(video, {maxPoses: 1});
-                         if(p.length > 0) {
-                             detected = true;
-                             // Approximate area
-                             let minX=10000, maxX=0, minY=10000, maxY=0;
-                             p[0].keypoints.forEach(k => { 
-                                 if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
-                                 if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
-                             });
-                             area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
-                         }
-                     } catch(e) {}
+                      try {
+                          const p = await detector.estimatePoses(video, {maxPoses: 1});
+                          if(p.length > 0) {
+                              detected = true;
+                              let minX=10000, maxX=0, minY=10000, maxY=0;
+                              p[0].keypoints.forEach(k => { 
+                                  if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
+                                  if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
+                              });
+                              area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
+                          }
+                      } catch(e) {}
                 }
             }
 
@@ -1007,7 +1074,24 @@
     }
     function saveMemories() { localStorage.setItem('obr_memories', JSON.stringify(slsMemories)); loadMemories(); }
     function loadMemories() { const d = localStorage.getItem('obr_memories'); if(d) slsMemories = JSON.parse(d); renderMemoryList(); }
-    function renderMemoryList() { const c = document.getElementById('memories-list'); c.innerHTML=''; slsMemories.forEach((m,i) => { c.innerHTML += `<div class="text-xs text-green-500 cursor-pointer border-b border-gray-800 p-1" onclick="playMemory(${i})">MEMORIA #${i+1} (${m.length} f)</div>`; }); }
+    
+    // DELETE MEMORY ADDED
+    function deleteMemory(idx) {
+        if(confirm("¿BORRAR ESTA MEMORIA?")) {
+            slsMemories.splice(idx, 1);
+            saveMemories();
+        }
+    }
+
+    function renderMemoryList() { 
+        const c = document.getElementById('memories-list'); c.innerHTML=''; 
+        slsMemories.forEach((m,i) => { 
+            c.innerHTML += `<div class="flex justify-between items-center border-b border-gray-800 p-1">
+                <span class="text-xs text-green-500 cursor-pointer" onclick="playMemory(${i})">MEMORIA #${i+1} (${m.length} f)</span>
+                <span class="text-red-500 cursor-pointer font-bold px-2" onclick="deleteMemory(${i})">&times;</span>
+            </div>`; 
+        }); 
+    }
     
     function playMemory(idx) {
         document.getElementById('playback-modal').classList.add('active');
@@ -1138,28 +1222,137 @@
     function seedInitialLogs() { ["Kernel... OK", "Sensores... OK", "Neural... OK", "Sistema OBR v41.0 activo"].forEach(msg => updateLog(msg)); }
     async function runFollowSequence() { const txt = document.getElementById('seq-text'); const icons = document.getElementById('seq-icons'); const han = document.getElementById('seq-handle'); const container = document.getElementById('follow-sequence'); while(true) { if(isBannerActive) { container.style.display = 'none'; await wait(5000); continue; } else container.style.display = 'flex'; txt.style.display = 'block'; await wait(2500); txt.style.display = 'none'; icons.style.display = 'block'; await wait(2500); icons.style.display = 'none'; han.style.display = 'block'; await wait(3500); han.style.display = 'none'; await wait(8000); } }
     function wait(ms){return new Promise(r=>setTimeout(r,ms));}
-    async function toggleMixerWindow() { const w=document.getElementById('mixer-window'); if(!w.classList.contains('active')){ w.classList.add('active'); if(!isMixerInitialized) { await initAudioEngine(); await initPeerSystem(); } } else w.classList.remove('active'); }
+    
+    async function toggleMixerWindow() { 
+        const w=document.getElementById('mixer-window'); 
+        if(!w.classList.contains('active')){ 
+            w.classList.add('active'); 
+            if(!isMixerInitialized) { await initAudioEngine(); await initPeerSystem(); } 
+        } else w.classList.remove('active'); 
+    }
+    
     async function initAudioEngine() { if(!mixerAudioCtx) mixerAudioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume(); if(!mixerMasterOut) { mixerMasterOut = mixerAudioCtx.createGain(); mixerMonitorOut = mixerAudioCtx.createGain(); mixerMasterOut.connect(mixerMonitorOut); mixerMonitorOut.connect(mixerAudioCtx.destination); setupVuMeter(mixerMasterOut, 'vu-master'); } }
-    async function initPeerSystem() { mixerPeer = new Peer(); mixerPeer.on('open', id => { document.getElementById('host-id-display').innerText = id; new QRCode(document.getElementById('mixer-qrcode'), {text:id,width:150,height:150}); document.getElementById('btn-mixer-open').classList.add('connected'); }); mixerPeer.on('call', call => { call.answer(); call.on('stream', remoteStream => { handleRemoteStream(call.peer, remoteStream); }); }); isMixerInitialized = true; }
-    function handleRemoteStream(id, stream) { 
+    
+    async function initPeerSystem() { 
+        mixerPeer = new Peer(); 
+        mixerPeer.on('open', id => { 
+            document.getElementById('host-id-display').innerText = id; 
+            new QRCode(document.getElementById('mixer-qrcode'), {text:id,width:150,height:150}); 
+            document.getElementById('btn-mixer-open').classList.add('connected'); 
+        }); 
+        
+        mixerPeer.on('call', call => { 
+            call.answer(); 
+            // Listen for remote stream
+            call.on('stream', remoteStream => { 
+                handleRemoteStream(call.peer, remoteStream, call); 
+            });
+            // Auto-remove on close/error
+            call.on('close', () => removeRemoteDevice(call.peer));
+            call.on('error', () => removeRemoteDevice(call.peer));
+        }); 
+        
+        isMixerInitialized = true; 
+    }
+    
+    // FIX AUDIO CONNECTION
+    async function handleRemoteStream(id, stream, call) { 
+        if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume();
+        
         const audioEl = document.createElement('audio'); 
         audioEl.srcObject = stream; 
+        audioEl.id = 'audio-' + id; // Tag for removal
+        audioEl.muted = true; // Required for autoplay, audio routed via WebAudio
         audioEl.autoplay = true; 
-        audioEl.muted = true; 
         document.getElementById('remote-audios-hidden').appendChild(audioEl); 
+        
+        // Force play
         audioEl.play().catch(e => console.log("Audio play error", e));
         
         const source = mixerAudioCtx.createMediaStreamSource(stream); 
         const gainNode = mixerAudioCtx.createGain(); 
         source.connect(gainNode); 
         gainNode.connect(mixerMasterOut); 
-        createChannelStripUI(id, gainNode); 
+        
+        // Track nodes for cleanup
+        mixerNodes[id] = { source: source, gain: gainNode, audioEl: audioEl, call: call };
+        
+        createChannelStripUI(id, gainNode, call); 
     }
-    function createChannelStripUI(id, gainNode) { const d = document.createElement('div'); d.className='channel-strip'; d.id='ch-'+id; d.innerHTML = `<div class="strip-title">📡 ${id.substring(0,4)}</div><input type="number" class="vol-display" id="v-${id}" value="100"><div class="fader-group"><input type="range" orient="vertical" id="f-${id}" max="200" value="100"><div class="vu-meter-wrap"><div class="vu-active" id="vu-${id}"></div></div></div><button class="btn-mute" id="m-${id}">MUTE</button>`; document.getElementById('remote-strips-container').appendChild(d); d.querySelector(`#f-${id}`).oninput = e => { gainNode.gain.value=e.target.value/100; }; setupVuMeter(gainNode, `vu-${id}`); }
+    
+    function removeRemoteDevice(id) {
+        // Cleanup Audio Nodes
+        if(mixerNodes[id]) {
+            try {
+                mixerNodes[id].source.disconnect();
+                mixerNodes[id].gain.disconnect();
+                mixerNodes[id].audioEl.remove(); // Remove DOM audio
+                // Force close if open
+                if(mixerNodes[id].call && mixerNodes[id].call.open) {
+                    mixerNodes[id].call.close();
+                }
+            } catch(e) { console.log("Cleanup warning:", e); }
+            delete mixerNodes[id];
+        }
+        
+        // Cleanup UI
+        const ui = document.getElementById('ch-' + id);
+        if(ui) ui.remove();
+    }
+    
+    function createChannelStripUI(id, gainNode, call) { 
+        const d = document.createElement('div'); 
+        d.className='channel-strip'; 
+        d.id='ch-'+id; 
+        
+        // New structure with Disconnect Button and Editable Input
+        d.innerHTML = `
+            <div class="w-full flex justify-end"><div class="btn-disconnect" onclick="removeRemoteDevice('${id}')">X</div></div>
+            <input type="text" class="strip-name-input" value="${id.substring(0,4)}" onfocus="this.select()">
+            
+            <input type="number" class="vol-display" id="v-${id}" value="100">
+            <div class="fader-group">
+                <input type="range" orient="vertical" id="f-${id}" max="200" value="100">
+                <div class="vu-meter-wrap"><div class="vu-active" id="vu-${id}"></div></div>
+            </div>
+            <button class="btn-mute" id="m-${id}">MUTE</button>
+        `; 
+        
+        document.getElementById('remote-strips-container').appendChild(d); 
+        
+        // Volume logic
+        d.querySelector(`#f-${id}`).oninput = e => { gainNode.gain.value=e.target.value/100; }; 
+        d.querySelector(`#v-${id}`).onchange = e => { 
+             const val = parseInt(e.target.value);
+             d.querySelector(`#f-${id}`).value = val;
+             gainNode.gain.value = val/100; 
+        };
+        
+        // Mute logic
+        const muteBtn = d.querySelector(`#m-${id}`);
+        let isMuted = false;
+        let prevVol = 1;
+        muteBtn.onclick = () => {
+             isMuted = !isMuted;
+             if (isMuted) {
+                 prevVol = gainNode.gain.value;
+                 gainNode.gain.value = 0;
+                 muteBtn.classList.add('muted');
+             } else {
+                 gainNode.gain.value = prevVol > 0 ? prevVol : 1;
+                 muteBtn.classList.remove('muted');
+             }
+        };
+
+        setupVuMeter(gainNode, `vu-${id}`); 
+    }
+
     function setupVuMeter(n,id){ if(!n) return; const a=mixerAudioCtx.createAnalyser();a.fftSize=256;n.connect(a);const d=new Uint8Array(256);const e=document.getElementById(id);function l(){if(!e)return;requestAnimationFrame(l);a.getByteTimeDomainData(d);let s=0;for(let x of d)s+=(x-128)/128*(x-128)/128;e.style.height=Math.min(100,Math.sqrt(s/256)*400)+"%";}l();}
     window.mixerSetVol = (t,v,f) => { const n = t==='master'?mixerMasterOut:null; if(n) { n.gain.value=v/100; } }
     window.mixerToggleMute = (t) => { const n=t==='master'?mixerMasterOut:null; if(n) { if(n.gain.value===0){n.gain.value=1;} else{n.gain.value=0;} } }
     window.showMixerQR=()=>document.getElementById('mixer-qr-modal').style.display='flex';
+    // Make removeRemoteDevice global so onClick works
+    window.removeRemoteDevice = removeRemoteDevice;
 
     function drawSkeleton(poses, ctx) {
         ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 4; ctx.fillStyle = '#ff0055';
@@ -1170,16 +1363,30 @@
             k.forEach(kp => { if(kp.score > 0.3) { ctx.beginPath(); ctx.arc(kp.x, kp.y, 5, 0, 2*Math.PI); ctx.fill(); } });
         });
     }
+    
+    // GHOST SCALING FIX
     function handleGhost(now) {
         if(slsMemories.length === 0) return;
         if(!ghostMemory && (now - lastGhostTime > nextGhostInterval)) {
-            if (Math.random() > 0.3) { ghostMemory = slsMemories[Math.floor(Math.random()*slsMemories.length)]; ghostFrameIndex = 0; }
+            if (Math.random() > 0.3) { 
+                ghostMemory = slsMemories[Math.floor(Math.random()*slsMemories.length)]; 
+                ghostFrameIndex = 0;
+                // Calculate random scale/position for this appearance to sit "in" the room
+                ghostScaleFactor = 0.5 + Math.random() * 0.4; // 0.5 to 0.9 scale
+                ghostOffsetX = (Math.random() * 0.4) * slsCanvas.width;
+                ghostOffsetY = (Math.random() * 0.2) * slsCanvas.height;
+            }
             nextGhostInterval = 10000 + Math.random() * 10000;
         }
         if(ghostMemory) {
             if(ghostFrameIndex < ghostMemory.length) {
                 const frame = ghostMemory[ghostFrameIndex].map(p => ({
-                    keypoints: p.keypoints.map(kp => ({ ...kp, x: kp.x * slsCanvas.width, y: kp.y * slsCanvas.height }))
+                    keypoints: p.keypoints.map(kp => ({ 
+                        ...kp, 
+                        // Apply scaling and offset to make it a "child" of the scene
+                        x: (kp.x * slsCanvas.width * ghostScaleFactor) + ghostOffsetX, 
+                        y: (kp.y * slsCanvas.height * ghostScaleFactor) + ghostOffsetY
+                    }))
                 }));
                 drawSkeleton(frame, ctxLive);
                 ghostFrameIndex++;
