@@ -583,6 +583,10 @@
     let currentZoomLevel = 1;
     let wakeLock = null;
 
+    // GLOBAL POSE STORAGE FOR PROXIMITY
+    let globalLatestPose = null;
+    let globalPoseTimestamp = 0;
+
     // Mixer
     let mixerAudioCtx, mixerPeer, mixerMasterOut, mixerMonitorOut;
     let mixerNodes = {}; // Tracks connected remote nodes: { id: { source, gain, audioEl, call } }
@@ -662,7 +666,9 @@
         
         try {
             await requestWakeLock(); // Prevent sleep
-            if(!window.tf) await waitForTF();
+            if(!window.tf) {
+                await waitForTF();
+            }
             await initAI();
             await initCamera(); 
             
@@ -705,19 +711,26 @@
     }
 
     async function initAI() {
-        try { await tf.setBackend('webgl'); } catch(e) { await tf.setBackend('cpu'); }
+        try { 
+            await tf.setBackend('webgl'); 
+            // PROD FLAGS FOR PERFORMANCE
+            tf.enableProdMode();
+            tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+        } catch(e) { await tf.setBackend('cpu'); }
+        
         await tf.ready();
         detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, { modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING });
     }
 
     async function initCamera() {
-        // High Performance request (4K 60FPS to 120FPS try)
+        // OPTIMIZED: 1080p Ideal (Best balance for AI performance vs Quality)
+        // 4K on Mobile Browser + AI = 3 FPS bottleneck.
         let constraints = { 
             video: { 
                 facingMode: 'environment', 
-                width: { ideal: 3840, max: 3840 }, 
-                height: { ideal: 2160, max: 2160 }, 
-                frameRate: { ideal: 60, max: 120 } 
+                width: { ideal: 1920 }, 
+                height: { ideal: 1080 }, 
+                frameRate: { ideal: 60 } 
             }, 
             audio: false 
         };
@@ -725,17 +738,10 @@
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
         } catch(e) {
-            console.warn("Max Specs Camera failed, retrying standard HD");
-            constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            } catch(e2) {
-                console.warn("HD failed, fallback VGA");
-                constraints = { video: { facingMode: 'environment' }, audio: false };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            }
+            console.warn("HD Cam failed, retrying VGA");
+            constraints = { video: { facingMode: 'environment' }, audio: false };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
         }
         return new Promise((resolve) => {
             video.onloadedmetadata = () => { video.play(); resizeCanvases(); resolve(); };
@@ -835,28 +841,44 @@
         ctxLive.clearRect(0, 0, slsCanvas.width, slsCanvas.height);
         
         let poses = [];
+        
+        // UNIFIED DETECTION LOGIC
+        // If SLS active: Detect every frame (or bottleneck limited)
+        // If SLS off: Detect once every 15 frames just for proximity (Low CPU usage)
+        let shouldDetect = false;
+        
+        if (currentFilter === 'sls') {
+            shouldDetect = true;
+        } else {
+            // Low power detection
+            if(frameCount % 15 === 0) shouldDetect = true;
+        }
+
         try {
-             if (currentFilter === 'sls' || frameCount % 4 === 0) { 
+             if (shouldDetect && detector) { 
                 poses = await detector.estimatePoses(video, { maxPoses: 4 });
+                // Update global state for proximity sensor
+                if(poses.length > 0) {
+                    globalLatestPose = poses[0];
+                    globalPoseTimestamp = now;
+                }
              }
         } catch(e){}
 
-        if (poses.length > 0) {
-             if (currentFilter === 'sls') {
-                drawSkeleton(poses, ctxLive);
-                let minX=10000, maxX=0, minY=10000, maxY=0;
-                poses.forEach(p => {
-                   p.keypoints.forEach(kp => {
-                      if(kp.x<minX) minX=kp.x; if(kp.x>maxX) maxX=kp.x;
-                      if(kp.y<minY) minY=kp.y; if(kp.y>maxY) maxY=kp.y;
-                   });
-                });
-                const w = Math.max(0, maxX - minX) / video.videoWidth;
-                const h = Math.max(0, maxY - minY) / video.videoHeight;
-                lastBoxSize = w * h;
-                lastPersonDetectedTs = now;
-                ghostMemory = null;
-             }
+        if (poses.length > 0 && currentFilter === 'sls') {
+            drawSkeleton(poses, ctxLive);
+            let minX=10000, maxX=0, minY=10000, maxY=0;
+            poses.forEach(p => {
+               p.keypoints.forEach(kp => {
+                  if(kp.x<minX) minX=kp.x; if(kp.x>maxX) maxX=kp.x;
+                  if(kp.y<minY) minY=kp.y; if(kp.y>maxY) maxY=kp.y;
+               });
+            });
+            const w = Math.max(0, maxX - minX) / video.videoWidth;
+            const h = Math.max(0, maxY - minY) / video.videoHeight;
+            lastBoxSize = w * h;
+            lastPersonDetectedTs = now;
+            ghostMemory = null;
         } else {
              if (currentFilter === 'sls') handleGhost(now);
         }
@@ -874,26 +896,24 @@
         } else { startSensorSim(); }
 
         if(proxInterval) clearInterval(proxInterval);
+        // READ-ONLY INTERVAL (No Detection here)
         proxInterval = setInterval(async () => {
             const now = Date.now();
             let detected = false; let area = 0;
-            if (now - lastPersonDetectedTs < 500) { detected = true; area = lastBoxSize; } 
-            else {
-                if (currentFilter !== 'sls' && !isInStudioMode && detector) {
-                      try {
-                          const p = await detector.estimatePoses(video, {maxPoses: 1});
-                          if(p.length > 0) {
-                              detected = true;
-                              let minX=10000, maxX=0, minY=10000, maxY=0;
-                              p[0].keypoints.forEach(k => { 
-                                  if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
-                                  if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
-                              });
-                              area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
-                          }
-                      } catch(e) {}
+            
+            // Check global state populated by Main Loop
+            if (now - globalPoseTimestamp < 1000) { 
+                detected = true;
+                const p = globalLatestPose;
+                if(p) {
+                    let minX=10000, maxX=0, minY=10000, maxY=0;
+                    p.keypoints.forEach(k => { 
+                        if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
+                        if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
+                    });
+                    area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
                 }
-            }
+            } 
 
             let targetProx = 0; let distDisplay = "--";
             if(detected && area > 0) {
@@ -1453,3 +1473,4 @@
 </script>
 </body>
 </html>
+
