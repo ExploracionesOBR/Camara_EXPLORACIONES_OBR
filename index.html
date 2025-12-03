@@ -237,6 +237,16 @@
         #stats-timer-container { display: none; color: var(--hud-red); font-weight: bold; font-family: 'Creepster'; letter-spacing: 1px; text-shadow: 0 0 5px red; opacity: 0.65; }
         #app-ui.full-mode #stats-timer-container { display: block; }
 
+        /* NETWORK STATS (NUEVO) */
+        #network-stats { position: absolute; bottom: 25px; right: 10px; z-index: 40; display: flex; align-items: flex-end; gap: 5px; pointer-events: none; transition: 0.6s; }
+        #signal-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+        .bar { width: 3px; background: #333; }
+        .bar.active { background: var(--hud-cyan); box-shadow: 0 0 5px var(--hud-cyan); }
+        .b1 { height: 3px; } .b2 { height: 6px; } .b3 { height: 9px; } .b4 { height: 12px; }
+        #ping-val { font-family: 'Share Tech Mono'; font-size: 0.65rem; color: var(--hud-teal); text-shadow: 0 0 2px var(--hud-teal); margin-bottom: 1px; }
+        /* Hide in banner mode */
+        .pop-out #network-stats { opacity: 0; }
+
         /* UI HIDDEN STATES (SOLO MODE) */
         .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; transition: 0.5s; }
         .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; transition: 0.5s; }
@@ -475,6 +485,14 @@
             <div id="bottom-banner"><video id="banner-vid" src="BANNER_1.mp4" muted playsinline></video></div>
             <div id="btn-play-intro" onclick="playIntro()"><i class="fas fa-film"></i></div>
 
+            <!-- NETWORK STATS OVERLAY -->
+            <div id="network-stats">
+                <div id="signal-bars">
+                    <div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div>
+                </div>
+                <div id="ping-val">--ms</div>
+            </div>
+
             <div id="stats-display">
                 <div class="stat-item" id="stats-timer-container" style="opacity: 0.65;"><span id="stats-timer-val">00:00:00</span></div>
                 <div class="stat-item"><span id="fps-val">--</span> FPS</div>
@@ -661,6 +679,10 @@
             seedInitialLogs();
             fetchRealTemperature();
             
+            // Start network stats update
+            setInterval(updateNetworkStats, 2000);
+            updateNetworkStats();
+
             isSystemLoaded = true;
             btn.disabled = false;
             btn.innerText = "INGRESAR AL SISTEMA";
@@ -1353,6 +1375,40 @@
     window.showMixerQR=()=>document.getElementById('mixer-qr-modal').style.display='flex';
     // Make removeRemoteDevice global so onClick works
     window.removeRemoteDevice = removeRemoteDevice;
+
+    // NETWORK STATS LOGIC
+    function updateNetworkStats() {
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const pingEl = document.getElementById('ping-val');
+        const bars = document.querySelectorAll('.bar');
+        
+        let rtt = 0;
+        let signalLevel = 4; // Default high
+
+        if (conn) {
+            rtt = conn.rtt || 50; 
+            // Heuristic for bars based on effectiveType
+            if (conn.effectiveType === '4g') signalLevel = 4;
+            else if (conn.effectiveType === '3g') signalLevel = 3;
+            else if (conn.effectiveType === '2g') signalLevel = 2;
+            else if (conn.effectiveType === 'slow-2g') signalLevel = 1;
+            
+            // Adjust based on RTT if 4g but high latency
+            if(conn.effectiveType === '4g' && rtt > 200) signalLevel = 3;
+            
+            pingEl.innerText = rtt + "ms";
+        } else {
+            pingEl.innerText = "N/A";
+        }
+        
+        if(!navigator.onLine) { signalLevel = 0; pingEl.innerText = "OFF"; }
+
+        // Render bars
+        bars.forEach((b, i) => {
+            if (i < signalLevel) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+    }
 
     function drawSkeleton(poses, ctx) {
         ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 4; ctx.fillStyle = '#ff0055';
