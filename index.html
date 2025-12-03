@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>DETECTOR-OBR v41.0 (PARANORMAL FINAL)</title> 
+    <title>DETECTOR-OBR v42.0 (iOS STABLE)</title> 
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -126,7 +126,6 @@
             filter: grayscale(100%) contrast(300%) invert(1) hue-rotate(180deg) saturate(300%);
         }
         .filter-negative #main-view-area::after {
-            /* Tint overlay to create blue/red effect */
             content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5; 
             background: linear-gradient(180deg, rgba(0,0,255,0.2) 0%, rgba(255,0,0,0.1) 50%, rgba(255,255,0,0.2) 100%);
             mix-blend-mode: overlay;
@@ -211,7 +210,6 @@
         #anomaly-pip { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 0, 0, 0.2); border: 1px solid red; color: red; font-family: 'Orbitron'; font-size: 0.7rem; padding: 2px 8px; display: none; animation: pulseRed 0.5s infinite; z-index: 60; }
         #sls-status-pip { position: absolute; top: 35px; left: 10px; font-family: 'Share Tech Mono'; font-size: 0.6rem; color: var(--hud-green); z-index: 60; display: none; text-shadow: 0 0 5px #0f0; }
         
-        /* LOGO GLITCH MOVIDO */
         #top-right-logo { 
             position: absolute; top: 15px; right: 5px; z-index: 40; width: 50px; 
             opacity: 0.8; transition: 0.3s; 
@@ -247,7 +245,6 @@
         /* Hide in banner mode */
         .pop-out #network-stats { opacity: 0; }
 
-        /* UI HIDDEN STATES (SOLO MODE) */
         .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; transition: 0.5s; }
         .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; transition: 0.5s; }
 
@@ -260,7 +257,6 @@
         #mixer-content { flex: 1; overflow-x: auto; padding: 20px; display: flex; gap: 10px; }
         .channel-strip { background: rgba(20,20,25,0.8); border: 1px solid #333; border-radius: 6px; padding: 10px 5px; display: flex; flex-direction: column; align-items: center; width: 90px; min-width: 90px; height: 320px; gap: 10px; }
         
-        /* NEW STYLES FOR EDITABLE TITLE AND CLOSE BTN */
         .strip-name-input { background: transparent; border: none; border-bottom: 1px dotted #555; color: var(--hud-cyan); font-family: 'Share Tech Mono'; font-size: 0.7rem; width: 100%; text-align: center; margin-bottom: 5px; }
         .strip-name-input:focus { border-bottom: 1px solid var(--hud-green); }
         .btn-disconnect { font-size: 0.6rem; color: var(--hud-red); border: 1px solid var(--hud-red); padding: 0px 4px; cursor: pointer; align-self: flex-end; margin-bottom: 2px; border-radius: 2px; transition: 0.2s; }
@@ -586,10 +582,11 @@
     // GLOBAL POSE STORAGE FOR PROXIMITY
     let globalLatestPose = null;
     let globalPoseTimestamp = 0;
+    let latestPosesForRender = []; // Decoupled rendering state
 
     // Mixer
     let mixerAudioCtx, mixerPeer, mixerMasterOut, mixerMonitorOut;
-    let mixerNodes = {}; // Tracks connected remote nodes: { id: { source, gain, audioEl, call } }
+    let mixerNodes = {}; 
     let isMixerInitialized = false;
     let savedMasterVol = 1;
 
@@ -647,7 +644,6 @@
         if(!GEMINI_API_KEY) btn.style.display = 'none'; else btn.style.display = 'flex';
     }
     
-    // WAKE LOCK IMPLEMENTATION (FORZAR CAMARA MAXIMO)
     async function requestWakeLock() {
         try {
             if ('wakeLock' in navigator) {
@@ -665,10 +661,8 @@
         btn.disabled = true; btn.innerText = "CARGANDO MOTORES...";
         
         try {
-            await requestWakeLock(); // Prevent sleep
-            if(!window.tf) {
-                await waitForTF();
-            }
+            await requestWakeLock(); 
+            if(!window.tf) { await waitForTF(); }
             await initAI();
             await initCamera(); 
             
@@ -676,7 +670,10 @@
             video.style.display = 'block';
             
             initSensors(); 
-            startMainLoop();
+            
+            // DECOUPLED LOOP START
+            startRenderingLoop();
+            startDetectionLoop();
             
             systemStartTime = Date.now(); 
             startTimer();
@@ -685,7 +682,6 @@
             seedInitialLogs();
             fetchRealTemperature();
             
-            // Start network stats update
             setInterval(updateNetworkStats, 2000);
             updateNetworkStats();
 
@@ -712,10 +708,11 @@
 
     async function initAI() {
         try { 
+            // iOS WebGL Fixes
             await tf.setBackend('webgl'); 
-            // PROD FLAGS FOR PERFORMANCE
+            tf.env().set('WEBGL_CPU_FORWARD', false); 
+            tf.env().set('WEBGL_IOS_CK_WORKAROUND', true); 
             tf.enableProdMode();
-            tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
         } catch(e) { await tf.setBackend('cpu'); }
         
         await tf.ready();
@@ -723,14 +720,12 @@
     }
 
     async function initCamera() {
-        // OPTIMIZED: 1080p Ideal (Best balance for AI performance vs Quality)
-        // 4K on Mobile Browser + AI = 3 FPS bottleneck.
+        // iOS Safari prefers standard 1080p or 720p. 4K forces software downscaling often.
         let constraints = { 
             video: { 
                 facingMode: 'environment', 
                 width: { ideal: 1920 }, 
-                height: { ideal: 1080 }, 
-                frameRate: { ideal: 60 } 
+                height: { ideal: 1080 },
             }, 
             audio: false 
         };
@@ -738,7 +733,6 @@
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
         } catch(e) {
-            console.warn("HD Cam failed, retrying VGA");
             constraints = { video: { facingMode: 'environment' }, audio: false };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
@@ -792,83 +786,78 @@
         liveSlot.appendChild(video);
     }
 
-    function startMainLoop() {
-        async function loop() {
-            requestAnimationFrame(loop);
+    // ---------------------------------------------------------
+    // CRITICAL FIX: DECOUPLED LOOPS FOR iOS PERFORMANCE
+    // ---------------------------------------------------------
+
+    function startRenderingLoop() {
+        // Runs at screen refresh rate (60fps on iPhone)
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
             const now = Date.now();
             frameCount++;
             if (now - lastFpsTime >= 1000) {
                 document.getElementById('fps-val').innerText = frameCount;
                 frameCount = 0; lastFpsTime = now;
             }
-            // Keep video playing hack for freeze issue
             if(video.paused && video.srcObject) video.play().catch(()=>{});
 
-            if (isInStudioMode) renderStudio(); else renderLive(now);
+            // Just DRAW results, don't detect here
+            if (isInStudioMode) {
+                ctxStudio.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
+                if(latestPosesForRender.length > 0) drawSkeleton(latestPosesForRender, ctxStudio);
+            } else {
+                renderLiveVisuals(now);
+            }
         }
-        loop();
+        renderLoop();
     }
 
-    async function renderStudio() {
-        ctxStudio.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
-        if(!detector) return;
-        try {
-            const poses = await detector.estimatePoses(video, { maxPoses: 4, flipHorizontal: false });
-            if(poses.length > 0) {
-                drawSkeleton(poses, ctxStudio);
-                if(isRecordingStudio) {
-                    const frameData = poses.map(p => ({ keypoints: p.keypoints.map(k => ({ ...k, x: k.x/video.videoWidth, y: k.y/video.videoHeight })) }));
-                    currentStudioBuffer.push(frameData);
-                    recordingFrames++;
-                    document.getElementById('studio-frame-counter').innerText = recordingFrames + " REC";
+    async function startDetectionLoop() {
+        // Runs as fast as possible but async, without blocking UI
+        while(true) {
+            if(detector && video.readyState >= 2) {
+                // Throttle detection when not in SLS mode to save battery/cpu
+                const shouldDetect = (currentFilter === 'sls' || isInStudioMode || (Date.now() % 500 < 50)); 
+                
+                if(shouldDetect) {
+                    try {
+                        const poses = await detector.estimatePoses(video, { maxPoses: 4 });
+                        latestPosesForRender = poses; // Update global state
+                        
+                        // Update Proximity State
+                        if(poses.length > 0) {
+                            globalLatestPose = poses[0];
+                            globalPoseTimestamp = Date.now();
+                        }
+                        
+                        // Studio Logic
+                        if(isInStudioMode && isRecordingStudio && poses.length > 0) {
+                            const frameData = poses.map(p => ({ keypoints: p.keypoints.map(k => ({ ...k, x: k.x/video.videoWidth, y: k.y/video.videoHeight })) }));
+                            currentStudioBuffer.push(frameData);
+                            recordingFrames++;
+                            document.getElementById('studio-frame-counter').innerText = recordingFrames + " REC";
+                        }
+                    } catch(e) {
+                        // console.log(e);
+                    }
                 }
             }
-        } catch(e) {}
-    }
-
-    function toggleStudioRecord() {
-        const btn = document.getElementById('btn-studio-record');
-        if(!isRecordingStudio) {
-            isRecordingStudio = true; currentStudioBuffer = []; recordingFrames = 0; btn.classList.add('recording');
-        } else {
-            isRecordingStudio = false; btn.classList.remove('recording');
-            if(currentStudioBuffer.length > 30) { slsMemories.push(currentStudioBuffer); saveMemories(); alert("GUARDADO"); } 
-            else { alert("DESCARTADO"); }
+            // Yield to main thread
+            await new Promise(r => setTimeout(r, currentFilter === 'sls' ? 10 : 200));
         }
     }
 
-    async function renderLive(now) {
+    // ---------------------------------------------------------
+
+    function renderLiveVisuals(now) {
         ctxLive.clearRect(0, 0, slsCanvas.width, slsCanvas.height);
         
-        let poses = [];
-        
-        // UNIFIED DETECTION LOGIC
-        // If SLS active: Detect every frame (or bottleneck limited)
-        // If SLS off: Detect once every 15 frames just for proximity (Low CPU usage)
-        let shouldDetect = false;
-        
-        if (currentFilter === 'sls') {
-            shouldDetect = true;
-        } else {
-            // Low power detection
-            if(frameCount % 15 === 0) shouldDetect = true;
-        }
-
-        try {
-             if (shouldDetect && detector) { 
-                poses = await detector.estimatePoses(video, { maxPoses: 4 });
-                // Update global state for proximity sensor
-                if(poses.length > 0) {
-                    globalLatestPose = poses[0];
-                    globalPoseTimestamp = now;
-                }
-             }
-        } catch(e){}
-
-        if (poses.length > 0 && currentFilter === 'sls') {
-            drawSkeleton(poses, ctxLive);
+        if (currentFilter === 'sls' && latestPosesForRender.length > 0) {
+            drawSkeleton(latestPosesForRender, ctxLive);
+            // Update box size for prox visualization from last render
             let minX=10000, maxX=0, minY=10000, maxY=0;
-            poses.forEach(p => {
+            latestPosesForRender.forEach(p => {
                p.keypoints.forEach(kp => {
                   if(kp.x<minX) minX=kp.x; if(kp.x>maxX) maxX=kp.x;
                   if(kp.y<minY) minY=kp.y; if(kp.y>maxY) maxY=kp.y;
@@ -879,14 +868,25 @@
             lastBoxSize = w * h;
             lastPersonDetectedTs = now;
             ghostMemory = null;
-        } else {
-             if (currentFilter === 'sls') handleGhost(now);
+        } else if (currentFilter === 'sls') {
+             handleGhost(now);
         }
         
         if(isPareidoliaActive && Math.random()>0.92) {
             const x = Math.random() * slsCanvas.width; const y = Math.random() * slsCanvas.height;
             const s = 50 + Math.random() * 100; 
             ctxLive.strokeStyle = 'rgba(255,0,0,0.9)'; ctxLive.lineWidth = 5; ctxLive.strokeRect(x, y, s, s);
+        }
+    }
+
+    function toggleStudioRecord() {
+        const btn = document.getElementById('btn-studio-record');
+        if(!isRecordingStudio) {
+            isRecordingStudio = true; currentStudioBuffer = []; recordingFrames = 0; btn.classList.add('recording');
+        } else {
+            isRecordingStudio = false; btn.classList.remove('recording');
+            if(currentStudioBuffer.length > 30) { slsMemories.push(currentStudioBuffer); saveMemories(); alert("GUARDADO"); } 
+            else { alert("DESCARTADO"); }
         }
     }
 
@@ -901,7 +901,7 @@
             const now = Date.now();
             let detected = false; let area = 0;
             
-            // Check global state populated by Main Loop
+            // Check global state populated by Detection Loop
             if (now - globalPoseTimestamp < 1000) { 
                 detected = true;
                 const p = globalLatestPose;
@@ -1024,8 +1024,6 @@
             });
             const data = await resp.json();
             let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
-            
-            // Advanced cleaning
             text = text.replace(/^(Objeto:|Descripción:|Veo:|1\.|-)\s*/i, '').replace(/[*_]/g, '').trim();
 
             const overlay = document.getElementById('ai-feedback-overlay');
@@ -1081,7 +1079,7 @@
             currentFilter = 'normal';
             if(btn) btn.classList.remove('active');
             document.body.className = '';
-            toggleTorch(false); // Ensure off
+            toggleTorch(false); 
             return;
         }
         currentFilter = f; document.body.className = ''; 
@@ -1117,7 +1115,6 @@
     function saveMemories() { localStorage.setItem('obr_memories', JSON.stringify(slsMemories)); loadMemories(); }
     function loadMemories() { const d = localStorage.getItem('obr_memories'); if(d) slsMemories = JSON.parse(d); renderMemoryList(); }
     
-    // DELETE MEMORY ADDED
     function deleteMemory(idx) {
         if(confirm("¿BORRAR ESTA MEMORIA?")) {
             slsMemories.splice(idx, 1);
@@ -1269,11 +1266,24 @@
         const w=document.getElementById('mixer-window'); 
         if(!w.classList.contains('active')){ 
             w.classList.add('active'); 
-            if(!isMixerInitialized) { await initAudioEngine(); await initPeerSystem(); } 
+            if(!isMixerInitialized) { 
+                await initAudioEngine(); // CRITICAL FOR SAFARI
+                await initPeerSystem(); 
+            } 
         } else w.classList.remove('active'); 
     }
     
-    async function initAudioEngine() { if(!mixerAudioCtx) mixerAudioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume(); if(!mixerMasterOut) { mixerMasterOut = mixerAudioCtx.createGain(); mixerMonitorOut = mixerAudioCtx.createGain(); mixerMasterOut.connect(mixerMonitorOut); mixerMonitorOut.connect(mixerAudioCtx.destination); setupVuMeter(mixerMasterOut, 'vu-master'); } }
+    async function initAudioEngine() { 
+        if(!mixerAudioCtx) mixerAudioCtx = new (window.AudioContext||window.webkitAudioContext)(); 
+        if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume(); 
+        if(!mixerMasterOut) { 
+            mixerMasterOut = mixerAudioCtx.createGain(); 
+            mixerMonitorOut = mixerAudioCtx.createGain(); 
+            mixerMasterOut.connect(mixerMonitorOut); 
+            mixerMonitorOut.connect(mixerAudioCtx.destination); 
+            setupVuMeter(mixerMasterOut, 'vu-master'); 
+        } 
+    }
     
     async function initPeerSystem() { 
         mixerPeer = new Peer(); 
@@ -1289,9 +1299,8 @@
             call.on('stream', remoteStream => { 
                 handleRemoteStream(call.peer, remoteStream, call); 
             });
-            // Auto-remove on close/error
-            call.on('close', () => removeRemoteDevice(call.peer));
-            call.on('error', () => removeRemoteDevice(call.peer));
+            // Fix iOS "Bouncing"
+            // call.on('error', () => removeRemoteDevice(call.peer)); // REMOVED STRICT CHECK
         }); 
         
         isMixerInitialized = true; 
@@ -1303,7 +1312,10 @@
         
         const audioEl = document.createElement('audio'); 
         audioEl.srcObject = stream; 
-        audioEl.id = 'audio-' + id; // Tag for removal
+        audioEl.id = 'audio-' + id; 
+        // iOS requires playsinline
+        audioEl.setAttribute('playsinline', '');
+        audioEl.setAttribute('webkit-playsinline', '');
         audioEl.muted = true; // Required for autoplay, audio routed via WebAudio
         audioEl.autoplay = true; 
         document.getElementById('remote-audios-hidden').appendChild(audioEl); 
@@ -1407,13 +1419,11 @@
 
         if (conn) {
             rtt = conn.rtt || 50; 
-            // Heuristic for bars based on effectiveType
             if (conn.effectiveType === '4g') signalLevel = 4;
             else if (conn.effectiveType === '3g') signalLevel = 3;
             else if (conn.effectiveType === '2g') signalLevel = 2;
             else if (conn.effectiveType === 'slow-2g') signalLevel = 1;
             
-            // Adjust based on RTT if 4g but high latency
             if(conn.effectiveType === '4g' && rtt > 200) signalLevel = 3;
             
             pingEl.innerText = rtt + "ms";
@@ -1423,7 +1433,6 @@
         
         if(!navigator.onLine) { signalLevel = 0; pingEl.innerText = "OFF"; }
 
-        // Render bars
         bars.forEach((b, i) => {
             if (i < signalLevel) b.classList.add('active');
             else b.classList.remove('active');
@@ -1447,8 +1456,7 @@
             if (Math.random() > 0.3) { 
                 ghostMemory = slsMemories[Math.floor(Math.random()*slsMemories.length)]; 
                 ghostFrameIndex = 0;
-                // Calculate random scale/position for this appearance to sit "in" the room
-                ghostScaleFactor = 0.5 + Math.random() * 0.4; // 0.5 to 0.9 scale
+                ghostScaleFactor = 0.5 + Math.random() * 0.4; 
                 ghostOffsetX = (Math.random() * 0.4) * slsCanvas.width;
                 ghostOffsetY = (Math.random() * 0.2) * slsCanvas.height;
             }
@@ -1459,7 +1467,6 @@
                 const frame = ghostMemory[ghostFrameIndex].map(p => ({
                     keypoints: p.keypoints.map(kp => ({ 
                         ...kp, 
-                        // Apply scaling and offset to make it a "child" of the scene
                         x: (kp.x * slsCanvas.width * ghostScaleFactor) + ghostOffsetX, 
                         y: (kp.y * slsCanvas.height * ghostScaleFactor) + ghostOffsetY
                     }))
