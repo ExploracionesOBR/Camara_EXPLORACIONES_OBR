@@ -4,27 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>DETECTOR-OBR v42.0 (iOS STABLE)</title> 
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Detector OBR">
+    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="format-detection" content="telephone=no">
     
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiREVURUNUT1IgT0JSIiwic2hvcnRfbmFtZSI6Ik9CUiIs" />
+    <title>DETECTOR-OBR v53.0 (NIGHT OPS)</title> 
+    
     <link rel="apple-touch-icon" href="obr-logo.png">
     <link rel="icon" type="image/png" href="obr-logo.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- MOTORES -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&family=Creepster&family=VT323&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&family=Creepster&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -40,8 +41,7 @@
         *, *::before, *::after {
             -webkit-user-select: none; -moz-user-select: none; user-select: none;
             -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
-            box-sizing: border-box;
-            outline: none;
+            box-sizing: border-box; outline: none;
         }
 
         html, body {
@@ -49,10 +49,8 @@
             background-color: #000; color: var(--hud-cyan);
             font-family: 'Share Tech Mono', monospace;
             position: fixed; overflow: hidden; overscroll-behavior: none; touch-action: none;
-            top: 0; left: 0; right: 0; bottom: 0;
         }
 
-        /* LAYOUT BASE */
         #app-ui { 
             width: 100%; height: 100%; display: grid;
             grid-template-columns: var(--left-panel-w) 1fr; 
@@ -83,7 +81,7 @@
             #app-ui:not([style*="rotate"]) { 
                  grid-template-columns: 0px 1fr; grid-template-rows: 1fr 140px; grid-template-areas: "left cam" "bottom bottom"; 
             }
-            .desktop-only { display: none; } .mobile-controls { display: flex; }
+            .mobile-controls { display: flex; }
         }
 
         #left-panel { 
@@ -116,34 +114,40 @@
         #zone-zoom { width: 75%; height: 100%; pointer-events: auto; touch-action: none; }
         #zone-menu { width: 25%; height: 100%; pointer-events: auto; }
 
-        /* FILTROS */
+        /* --- FILTROS --- */
         .filter-night-vision #shared-video-element { filter: grayscale(100%) contrast(1.4) brightness(1.3) sepia(100%) hue-rotate(90deg) saturate(200%); }
         .filter-night-vision #main-view-area::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, rgba(0, 255, 50, 0.05) 40%, rgba(0,0,0,0.6) 95%); background-image: repeating-linear-gradient(0deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02) 1px, transparent 1px, transparent 3px); z-index: 5; mix-blend-mode: hard-light; }
         
-        /* CORRECCION TERMICA */
+        /* TERMICO - CORREGIDO A NEGATIVO REAL */
         .filter-negative #shared-video-element { 
-            /* Heatmap fake style */
-            filter: grayscale(100%) contrast(300%) invert(1) hue-rotate(180deg) saturate(300%);
+            filter: invert(1) contrast(1.5) brightness(1.2) grayscale(100%);
         }
-        .filter-negative #main-view-area::after {
-            content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5; 
-            background: linear-gradient(180deg, rgba(0,0,255,0.2) 0%, rgba(255,0,0,0.1) 50%, rgba(255,255,0,0.2) 100%);
+        /* Eliminado overlay de color para mantener pureza visual en oscuridad */
+        .filter-negative #main-view-area::after { display: none; }
+        
+        .filter-urbex #shared-video-element {
+            filter: contrast(160%) brightness(1.1) grayscale(100%) sepia(100%) hue-rotate(220deg) saturate(250%);
+        }
+        .filter-urbex #main-view-area::after {
+            content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
             mix-blend-mode: overlay;
         }
-        
-        .filter-bokeh #main-view-area::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5; backdrop-filter: blur(8px); mask-image: radial-gradient(circle at center, transparent 30%, black 90%); }
+
         .filter-pareidolia #main-view-area { border: 2px solid var(--hud-red); }
 
         .btn-hud { background: rgba(0, 243, 255, 0.05); border: 1px solid var(--hud-cyan); color: var(--hud-cyan); padding: 6px; font-family: 'Orbitron'; font-size: 0.65rem; cursor: pointer; text-transform: uppercase; width: 100%; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; gap: 5px; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
         .btn-hud.active { background: var(--hud-cyan); color: #000; box-shadow: 0 0 15px var(--hud-cyan); border-color: #fff; }
         #btn-mixer-open.connected { border-color: var(--hud-green); color: var(--hud-green); box-shadow: 0 0 10px var(--hud-green) inset; }
 
-        .sensor-box { border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); padding: 4px 6px; margin-bottom: 4px; text-align: center; }
+        .sensor-box { border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); padding: 4px 6px; margin-bottom: 4px; text-align: center; position: relative; }
         .sensor-label { font-size: 0.6rem; color: #777; margin-bottom: 0; }
         .sensor-val-big { font-size: 1.1rem; line-height: 1.2; font-weight: bold; }
         .temp-val-text { color: var(--hud-orange); text-shadow: 0 0 5px var(--hud-orange); }
 
-        /* LOADING SCREEN */
+        #hud-vu-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #111; }
+        #hud-vu-bar { width: 0%; height: 100%; background: linear-gradient(to right, #00ff00, #ffff00, #ff0000); transition: width 0.05s ease; opacity: 0.8; }
+
         #loading-screen { position: fixed; inset: 0; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #000; background-image: url('fondo_pantalla.jpg'); background-size: cover; background-position: center; transition: opacity 0.5s; }
         #loading-screen::before { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: -1; }
         .loader-container { position: relative; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
@@ -159,13 +163,36 @@
         #btn-settings-gear { position: absolute; top: 10px; right: 10px; font-size: 1.8rem; color: #555; cursor: pointer; z-index: 5000; display: none; }
         #btn-settings-gear:hover { color: var(--hud-cyan); transform: rotate(90deg); }
 
-        /* MENU DERECHO */
         #right-menu { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; z-index: 100; padding: 10px; transition: opacity 0.5s, transform 0.5s; opacity: 1; pointer-events: auto; }
         #right-menu.hidden-menu { opacity: 0; transform: translateY(-50%) translateX(50px); pointer-events: none; }
         .menu-btn-round { width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 2px solid var(--hud-cyan); color: var(--hud-cyan); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; transition: 0.3s; backdrop-filter: blur(4px); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
         .menu-btn-round:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--hud-cyan); background: var(--hud-cyan); color: #000; }
         .menu-btn-round.active { background: var(--hud-red); border-color: var(--hud-red); color: white; animation: pulseRed 2s infinite; }
         @keyframes pulseRed { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 15px red; } 100% { opacity: 0.8; } }
+
+        #settings-modal { position: fixed; inset: 0; z-index: 4000; background: var(--admin-bg); display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--hud-red); font-family: 'Share Tech Mono'; backdrop-filter: blur(10px); }
+        .settings-panel { width: 90%; max-width: 700px; height: 80%; border: 2px solid var(--admin-border); background: rgba(10,0,0,0.9); padding: 15px; display: flex; flex-direction: column; border-radius: 8px; position: relative; }
+        .settings-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--hud-red); z-index: 20; }
+        .settings-body { display: flex; flex: 1; overflow: hidden; gap: 10px; margin-top: 30px; }
+        .nav-container { width: 30%; border-right: 1px solid #500; padding-right: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .nav-btn { padding: 12px; background: rgba(255,0,0,0.1); border: 1px solid #500; color: #888; cursor: pointer; font-size: 0.7rem; font-family: 'Orbitron'; }
+        .nav-btn.active { background: var(--hud-red); color: black; font-weight: bold; }
+        .settings-content-area { flex: 1; padding: 5px; overflow-y: auto; }
+        .settings-tab-content { display: none; }
+        .settings-tab-content.active { display: block; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid var(--hud-red); background: rgba(255,0,0,0.1); color: var(--hud-red); cursor: pointer; font-family: 'Orbitron'; }
+        
+        #studio-standalone-container { position: fixed; inset: 0; z-index: 9999; background: #000; display: none; }
+        #studio-standalone-container.active { display: block; }
+        .studio-video-slot { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        .studio-ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        .studio-top-bar { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
+        .studio-bottom-bar { display: flex; justify-content: center; pointer-events: auto; padding-bottom: 20px; }
+        .rec-btn-huge { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .rec-icon-shape { width: 25px; height: 25px; background: #ff0000; border-radius: 50%; transition: all 0.2s; box-shadow: 0 0 10px #ff0000; }
+        .rec-btn-huge.recording .rec-icon-shape { width: 30px; height: 30px; border-radius: 4px; background: #ffffff; box-shadow: 0 0 15px #ffffff; animation: pulseInner 1s infinite; }
+        @keyframes pulseInner { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .studio-exit-btn { font-size: 2rem; color: #fff; cursor: pointer; text-shadow: 0 0 10px red; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; }
 
         .log-item { font-size: 0.55rem; margin-bottom: 1px; font-family: 'Share Tech Mono'; line-height: 1.1; }
         .log-normal { color: #0f0; } .log-warn { color: var(--hud-orange); } .log-crit { color: var(--hud-red); text-shadow: 0 0 2px red; }
@@ -181,20 +208,6 @@
         #seq-handle { font-family: 'Share Tech Mono'; font-size: 1.2rem; color: var(--hud-cyan); }
         @keyframes glitchText { 0% { transform: translate(0); } 20% { transform: translate(-1px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-1px, -1px); } 80% { transform: translate(1px, 1px); } 100% { transform: translate(0); } }
 
-        /* BANNER REDUCIDO */
-        #bottom-banner { position: absolute; bottom: 0; left: 0; width: 100%; height: 75px; z-index: 35; display: none; background: black; border-top: 2px solid var(--hud-red); opacity: 0; transform: translateY(100%); transition: 0.6s ease; }
-        #bottom-banner.active { opacity: 1; transform: translateY(0); }
-        #banner-vid { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
-
-        #btn-play-intro { position: absolute; bottom: 5px; left: 10px; z-index: 100; pointer-events: auto; font-size: 1.5rem; color: white; cursor: pointer; filter: drop-shadow(0 0 5px black); transition: opacity 0.5s ease; }
-        #btn-play-intro:active { transform: scale(0.9); }
-        
-        /* INTRO TRANSICIÓN PELICULA */
-        #intro-player { position: fixed; inset: 0; background: black; z-index: 5000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transform: scale(1.1); transition: opacity 1s ease, transform 1s ease; }
-        #intro-player.active { opacity: 1; pointer-events: auto; transform: scale(1); }
-        #intro-vid { width: 100%; height: 100%; object-fit: contain; }
-        #intro-fallback-close { position: absolute; bottom: 30px; right: 30px; border: 1px solid #555; padding: 10px; color: #555; cursor: pointer; display: none; font-family: 'Orbitron'; font-size: 0.8rem; }
-
         #ai-feedback-overlay { position: absolute; top: 25px; left: 5px; z-index: 45; text-align: left; pointer-events: none; display: none; max-width: 250px; }
         #ai-feedback-text { font-family: 'Share Tech Mono'; font-size: 0.65rem; color: var(--hud-red); text-shadow: 0 0 5px red; background: transparent; padding: 2px 4px; animation: glitchText 0.2s infinite; letter-spacing: 1px; text-transform: uppercase; line-height: 1.1; white-space: nowrap; }
         #ai-generated-image { width: 150px; height: 150px; object-fit: cover; border: 1px solid var(--hud-red); box-shadow: 0 0 15px red; display: none; animation: flashImage 0.2s; margin-top: 5px; }
@@ -209,46 +222,33 @@
 
         #anomaly-pip { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 0, 0, 0.2); border: 1px solid red; color: red; font-family: 'Orbitron'; font-size: 0.7rem; padding: 2px 8px; display: none; animation: pulseRed 0.5s infinite; z-index: 60; }
         #sls-status-pip { position: absolute; top: 35px; left: 10px; font-family: 'Share Tech Mono'; font-size: 0.6rem; color: var(--hud-green); z-index: 60; display: none; text-shadow: 0 0 5px #0f0; }
+
+        #bottom-banner { position: absolute; bottom: 0; left: 0; width: 100%; height: 75px; z-index: 35; display: none; background: black; border-top: 2px solid var(--hud-red); opacity: 0; transform: translateY(100%); transition: 0.6s ease; }
+        #bottom-banner.active { opacity: 1; transform: translateY(0); }
+        #banner-vid { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
         
-        #top-right-logo { 
-            position: absolute; top: 15px; right: 5px; z-index: 40; width: 50px; 
-            opacity: 0.8; transition: 0.3s; 
-            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        .video-btn { 
+            position: absolute; bottom: 5px; z-index: 100; pointer-events: auto; 
+            font-size: 1.5rem; color: white; cursor: pointer; 
+            filter: drop-shadow(0 0 5px black); transition: opacity 0.3s ease, transform 0.2s;
+            opacity: 0.4;
         }
-        @keyframes glitch-anim-2 {
-            0% { clip-path: inset(71% 0 10% 0); transform: translate(-2px, 1px); filter: hue-rotate(0deg); }
-            10% { clip-path: inset(12% 0 81% 0); transform: translate(1px, -1px); filter: hue-rotate(90deg); }
-            20% { clip-path: inset(86% 0 9% 0); transform: translate(-1px, 2px); filter: invert(1); }
-            30% { clip-path: inset(4% 0 46% 0); transform: translate(2px, -2px); }
-            40% { clip-path: inset(36% 0 58% 0); transform: translate(-2px, 1px); filter: hue-rotate(-90deg); }
-            50% { clip-path: inset(93% 0 5% 0); transform: translate(1px, -1px); }
-            60% { clip-path: inset(23% 0 66% 0); transform: translate(-1px, 2px); }
-            70% { clip-path: inset(62% 0 25% 0); transform: translate(2px, -2px); }
-            80% { clip-path: inset(16% 0 73% 0); transform: translate(-2px, 1px); }
-            90% { clip-path: inset(51% 0 32% 0); transform: translate(1px, -1px); }
-            100% { clip-path: inset(100% 0 0% 0); transform: translate(0); filter: none;}
-        }
-
-        #zoom-target-indicator { position: absolute; width: 40px; height: 40px; border: 2px solid var(--hud-green); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 25; }
+        .video-btn:hover, .video-btn:active { opacity: 1; transform: scale(1.1); }
         
-        #stats-display { position: absolute; bottom: 5px; right: 10px; z-index: 40; text-align: right; font-family: 'Share Tech Mono'; font-size: 0.75rem; color: var(--hud-teal); text-shadow: 0 0 2px var(--hud-teal); pointer-events: none; display: flex; gap: 8px; align-items: center; transition: 0.6s; }
-        #stats-timer-container { display: none; color: var(--hud-red); font-weight: bold; font-family: 'Creepster'; letter-spacing: 1px; text-shadow: 0 0 5px red; opacity: 0.65; }
-        #app-ui.full-mode #stats-timer-container { display: block; }
+        #btn-play-intro { left: 10px; }
+        #btn-play-outro { left: 50px; color: var(--hud-red); }
 
-        /* NETWORK STATS (NUEVO) */
-        #network-stats { position: absolute; bottom: 25px; right: 10px; z-index: 40; display: flex; align-items: flex-end; gap: 5px; pointer-events: none; transition: 0.6s; }
-        #signal-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
-        .bar { width: 3px; background: #333; }
-        .bar.active { background: var(--hud-cyan); box-shadow: 0 0 5px var(--hud-cyan); }
-        .b1 { height: 3px; } .b2 { height: 6px; } .b3 { height: 9px; } .b4 { height: 12px; }
-        #ping-val { font-family: 'Share Tech Mono'; font-size: 0.65rem; color: var(--hud-teal); text-shadow: 0 0 2px var(--hud-teal); margin-bottom: 1px; }
-        /* Hide in banner mode */
-        .pop-out #network-stats { opacity: 0; }
+        #intro-player { 
+            position: fixed; inset: 0; background: black; z-index: 5000; 
+            display: flex; align-items: center; justify-content: center; 
+            opacity: 0; pointer-events: none; 
+            transform: scale(1.1); 
+            transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        #intro-player.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+        #intro-vid { width: 100%; height: 100%; object-fit: contain; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        #intro-fallback-close { position: absolute; bottom: 30px; right: 30px; border: 1px solid #555; padding: 10px; color: #555; cursor: pointer; display: none; font-family: 'Orbitron'; font-size: 0.8rem; }
 
-        .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; transition: 0.5s; }
-        .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; transition: 0.5s; }
-
-        /* MIXER */
         #mixer-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); width: 95vw; max-width: 800px; height: 80vh; background: rgba(10, 12, 18, 0.65); border: 1px solid var(--hud-cyan); z-index: 2000; display: none; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; transition: 0.3s; opacity: 0; pointer-events: none; backdrop-filter: blur(5px); }
         #mixer-window.active { display: flex; opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
         .mixer-header { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: center; align-items: center; position: relative; }
@@ -257,56 +257,52 @@
         #mixer-content { flex: 1; overflow-x: auto; padding: 20px; display: flex; gap: 10px; }
         .channel-strip { background: rgba(20,20,25,0.8); border: 1px solid #333; border-radius: 6px; padding: 10px 5px; display: flex; flex-direction: column; align-items: center; width: 90px; min-width: 90px; height: 320px; gap: 10px; }
         
-        .strip-name-input { background: transparent; border: none; border-bottom: 1px dotted #555; color: var(--hud-cyan); font-family: 'Share Tech Mono'; font-size: 0.7rem; width: 100%; text-align: center; margin-bottom: 5px; }
-        .strip-name-input:focus { border-bottom: 1px solid var(--hud-green); }
-        .btn-disconnect { font-size: 0.6rem; color: var(--hud-red); border: 1px solid var(--hud-red); padding: 0px 4px; cursor: pointer; align-self: flex-end; margin-bottom: 2px; border-radius: 2px; transition: 0.2s; }
-        .btn-disconnect:hover { background: var(--hud-red); color: white; }
+        /* CORRECCIÓN VISUAL MEZCLADOR */
+        .strip-name-input { 
+            background: transparent; border: none; border-bottom: 1px dotted #555; 
+            color: var(--hud-cyan); font-family: 'Share Tech Mono'; font-size: 0.7rem; 
+            width: 100%; text-align: center; margin-bottom: 5px; 
+        }
         
+        /* Fix for Overflowing Volume Input */
+        .vol-display { 
+            background: rgba(0,0,0,0.5); 
+            border: 1px solid #333; 
+            color: var(--hud-cyan); 
+            text-align: center; 
+            width: 80%; /* Reduce width to fit container */
+            max-width: 70px;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
         .fader-group { flex: 1; width: 100%; display: flex; justify-content: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 10px 0; border-radius: 4px; }
         input[type=range][orient=vertical] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 40px; height: 100%; accent-color: var(--hud-cyan); }
         .vu-meter-wrap { width: 12px; height: 100%; background: #111; position: relative; border-radius: 2px; overflow: hidden; }
         .vu-active { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: linear-gradient(to top, #00ff00, #ffff00, #ff0000); transition: height 0.05s; }
         .btn-mute { width: 100%; padding: 5px; background: #333; color: #888; border: 1px solid #555; font-size: 0.6rem; }
         .btn-mute.muted { background: #500; color: white; border-color: red; }
-        .vol-display { background: transparent; color: var(--hud-cyan); text-align: center; width: 100%; border: none; font-size: 0.8rem; }
         #mixer-qr-modal { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 2050; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        #mixer-qrcode img { border: 5px solid white; border-radius: 4px; }
-        #remote-audios-hidden { display: none; }
-
-        /* SETTINGS */
-        #settings-modal { position: fixed; inset: 0; z-index: 4000; background: var(--admin-bg); display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--hud-red); font-family: 'Share Tech Mono'; backdrop-filter: blur(10px); }
-        .settings-panel { width: 90%; max-width: 700px; height: 80%; border: 2px solid var(--admin-border); background: rgba(10,0,0,0.9); padding: 15px; display: flex; flex-direction: column; border-radius: 8px; position: relative; }
-        .settings-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--hud-red); z-index: 20; }
-        .settings-body { display: flex; flex: 1; overflow: hidden; gap: 10px; margin-top: 30px; }
-        .nav-container { width: 30%; border-right: 1px solid #500; padding-right: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .nav-btn { padding: 12px; background: rgba(255,0,0,0.1); border: 1px solid #500; color: #888; cursor: pointer; font-size: 0.7rem; font-family: 'Orbitron'; }
-        .nav-btn.active { background: var(--hud-red); color: black; font-weight: bold; }
-        .settings-content-area { flex: 1; padding: 5px; overflow-y: auto; }
-        .settings-tab-content { display: none; }
-        .settings-tab-content.active { display: block; }
-        .btn-action { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid var(--hud-red); background: rgba(255,0,0,0.1); color: var(--hud-red); cursor: pointer; font-family: 'Orbitron'; }
-
-        /* STUDIO */
-        #studio-standalone-container { position: fixed; inset: 0; z-index: 9999; background: #000; display: none; }
-        #studio-standalone-container.active { display: block; }
-        .studio-video-slot { width: 100%; height: 100%; position: relative; overflow: hidden; }
-        .studio-ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .studio-top-bar { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
-        .studio-bottom-bar { display: flex; justify-content: center; pointer-events: auto; padding-bottom: 20px; }
-        .rec-btn-huge { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .rec-icon-shape { width: 25px; height: 25px; background: #ff0000; border-radius: 50%; transition: all 0.2s; box-shadow: 0 0 10px #ff0000; }
-        .rec-btn-huge:active { transform: scale(0.9); }
-        .rec-btn-huge.recording { border-color: #ff0000; }
-        .rec-btn-huge.recording .rec-icon-shape { width: 30px; height: 30px; border-radius: 4px; background: #ffffff; box-shadow: 0 0 15px #ffffff; animation: pulseInner 1s infinite; }
-        @keyframes pulseInner { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .studio-exit-btn { font-size: 2rem; color: #fff; cursor: pointer; text-shadow: 0 0 10px red; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; }
         
-        /* PLAYBACK */
-        #playback-modal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; }
-        #playback-modal.active { display: flex; }
-        .playback-content { width: 90%; max-width: 800px; aspect-ratio: 16/9; background: black; border: 2px solid var(--hud-cyan); position: relative; }
-        #playback-canvas { width: 100%; height: 100%; object-fit: contain; }
+        #stats-display { position: absolute; bottom: 5px; right: 10px; z-index: 40; text-align: right; font-family: 'Share Tech Mono'; font-size: 0.75rem; color: var(--hud-teal); text-shadow: 0 0 2px var(--hud-teal); pointer-events: none; display: flex; gap: 8px; align-items: center; transition: 0.6s; }
+        .pop-out { transform: scale(0) !important; opacity: 0 !important; pointer-events: none; transition: 0.5s; }
+        .pop-in { transform: scale(1) !important; opacity: 1 !important; pointer-events: auto; transition: 0.5s; }
         
+        #top-right-logo { 
+            position: absolute; top: 15px; right: 5px; z-index: 40; width: 50px; opacity: 0.9; transition: 0.3s; 
+            filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.5));
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { transform: translate(0); clip-path: inset(0 0 0 0); filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.5)) hue-rotate(0deg); }
+            5% { transform: translate(-2px, 1px); clip-path: inset(20% 0 50% 0); filter: drop-shadow(0 0 5px red) invert(1); }
+            10% { transform: translate(2px, -2px); clip-path: inset(0 0 0 0); filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.5)) hue-rotate(0deg); }
+            90% { transform: translate(0); opacity: 0.9; }
+            95% { transform: translate(1px, 1px); opacity: 0.5; }
+            100% { transform: translate(0); opacity: 0.9; }
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -314,6 +310,7 @@
 
     <video id="shared-video-element" autoplay playsinline muted style="display:none;"></video>
 
+    <!-- LOADING SCREEN -->
     <div id="loading-screen">
         <div class="loader-container">
             <div class="loader"></div>
@@ -346,10 +343,10 @@
                         <label class="text-xs text-red-400">GEMINI API KEY</label>
                         <div class="flex gap-2 mb-2">
                             <input type="password" id="api-key-internal" class="w-full bg-black border border-red-900 p-2 text-white text-xs">
-                            <a href="https://aistudio.google.com/api-keys" target="_blank" class="btn-action w-12 flex items-center justify-center p-0 m-0" style="margin-top:0; text-decoration:none; color:white; font-size:1.5rem;">📲</a>
                         </div>
                         <button class="btn-action" id="btn-validate-api" onclick="validateAndSaveKey()">VALIDAR Y GUARDAR</button>
                         <div id="api-status-msg" class="text-xs font-mono mt-2 text-center text-yellow-500"></div>
+                        <a href="https://aistudio.google.com/api-keys" target="_blank" class="text-[10px] text-gray-500 block text-center mt-2 underline">CONSEGUIR KEY</a>
                     </div>
                     <div id="tab-studio" class="settings-tab-content">
                         <p class="text-[10px] text-gray-400 mb-2">GRABACIÓN LIMPIA SIN INTERFAZ LIVE.</p>
@@ -390,14 +387,6 @@
         </div>
     </div>
 
-    <!-- PLAYBACK MODAL -->
-    <div id="playback-modal">
-        <div class="playback-content">
-            <canvas id="playback-canvas"></canvas>
-            <div class="absolute top-2 right-2 text-red-500 text-2xl cursor-pointer bg-black/50 px-2 rounded" onclick="closePlayback()">X</div>
-        </div>
-    </div>
-
     <!-- LIVE UI PRINCIPAL -->
     <div id="app-ui">
         <div id="left-panel">
@@ -421,6 +410,12 @@
                 <div class="h-1 bg-gray-800 w-full mt-1"><div id="prox-bar" class="h-full bg-blue-500 w-0 transition-all duration-75"></div></div>
             </div>
 
+            <!-- MIXER VU METER -->
+            <div class="sensor-box" style="padding-bottom: 12px;">
+                <div class="sensor-label">AUDIO REMOTO</div>
+                <div id="hud-vu-container"><div id="hud-vu-bar"></div></div>
+            </div>
+
             <div class="sensor-box">
                 <div class="sensor-label">TEMPERATURA</div>
                 <div class="sensor-val-big font-bold flex items-end justify-center temp-val-text"><span id="temp-val">--</span> <span class="text-xs ml-1">°C</span></div>
@@ -429,7 +424,7 @@
             <div class="mt-2 space-y-1">
                 <button class="btn-hud" onclick="setFilter('night', this)"><i class="fas fa-moon"></i> NOCTURNA</button>
                 <button class="btn-hud" onclick="setFilter('thermal', this)"><i class="fas fa-fire"></i> TERMICO</button>
-                <button class="btn-hud" onclick="setFilter('bokeh', this)"><i class="fas fa-camera"></i> BOKEH</button>
+                <button class="btn-hud" onclick="setFilter('urbex', this)"><i class="fas fa-city"></i> URBEX</button>
                 <button class="btn-hud" onclick="setFilter('sls', this)"><i class="fas fa-running"></i> SLS (AI)</button>
             </div>
             <div class="mt-2 border-t border-gray-800 pt-2">
@@ -439,7 +434,6 @@
 
         <div id="main-view-area">
             <div id="zoom-container">
-                <!-- SLOT PARA EL VIDEO EN MODO LIVE -->
                 <div id="live-video-slot" class="w-full h-full absolute inset-0"></div>
                 <canvas id="sls-canvas"></canvas>
             </div>
@@ -479,15 +473,8 @@
             </div>
 
             <div id="bottom-banner"><video id="banner-vid" src="BANNER_1.mp4" muted playsinline></video></div>
-            <div id="btn-play-intro" onclick="playIntro()"><i class="fas fa-film"></i></div>
-
-            <!-- NETWORK STATS OVERLAY -->
-            <div id="network-stats">
-                <div id="signal-bars">
-                    <div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div>
-                </div>
-                <div id="ping-val">--ms</div>
-            </div>
+            <div id="btn-play-intro" class="video-btn" onclick="playIntro()"><i class="fas fa-film"></i></div>
+            <div id="btn-play-outro" class="video-btn" onclick="playOutro()"><i class="fas fa-door-open"></i></div>
 
             <div id="stats-display">
                 <div class="stat-item" id="stats-timer-container" style="opacity: 0.65;"><span id="stats-timer-val">00:00:00</span></div>
@@ -532,7 +519,7 @@
     </div>
     <div id="remote-audios-hidden" style="display:none;"></div>
 
-    <!-- INTRO PLAYER (BLINDADO) -->
+    <!-- INTRO PLAYER (REUSED FOR OUTRO) -->
     <div id="intro-player"><video id="intro-vid" playsinline><source src="INTRO_1.mp4" type="video/mp4"></video><div id="intro-fallback-close" onclick="closeIntro()">CERRAR VIDEO</div></div>
 
 <script>
@@ -551,7 +538,6 @@
     
     let isInStudioMode = false;
     let isRecordingStudio = false;
-    let isPlayingMemory = false;
     let isPareidoliaActive = false;
     
     let slsMemories = [];
@@ -567,30 +553,22 @@
     let smoothedProx = 0;
     let lastGhostTime = 0;
     let nextGhostInterval = 10000;
-    let lastBoxSize = 0;
-    let lastPersonDetectedTs = 0;
     let fakeLogInterval;
-    let timerInterval;
     let isBannerActive = false;
     let menuHideTimeout;
-    let bannerTimeout;
     let systemStartTime = 0;
-    let zoomTimer = null;
     let currentZoomLevel = 1;
     let wakeLock = null;
 
-    // GLOBAL POSE STORAGE FOR PROXIMITY
     let globalLatestPose = null;
     let globalPoseTimestamp = 0;
-    let latestPosesForRender = []; // Decoupled rendering state
+    let latestPosesForRender = []; 
 
-    // Mixer
     let mixerAudioCtx, mixerPeer, mixerMasterOut, mixerMonitorOut;
     let mixerNodes = {}; 
     let isMixerInitialized = false;
     let savedMasterVol = 1;
 
-    // SLS SCALING LOGIC
     let ghostScaleFactor = 1;
     let ghostOffsetX = 0;
     let ghostOffsetY = 0;
@@ -614,10 +592,14 @@
         document.getElementById('title-return-zone').addEventListener('dblclick', exitToMain);
         
         const zZoom = document.getElementById('zone-zoom');
+        let zoomTimer;
         zZoom.addEventListener('pointerdown', (e) => {
             zoomTimer = setTimeout(() => {
-                if(currentZoomLevel === 1) executeZoomAt(e.offsetX, e.offsetY, 3);
-                else if(currentZoomLevel === 3) executeZoomAt(e.offsetX, e.offsetY, 5);
+                const rect = video.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                if(currentZoomLevel === 1) executeZoomAt(x, y, 3);
+                else if(currentZoomLevel === 3) executeZoomAt(x, y, 5);
                 else resetZoom();
             }, 300); 
         });
@@ -627,16 +609,9 @@
         document.getElementById('zone-menu').addEventListener('click', showMenu);
         
         const banVid = document.getElementById('banner-vid');
-        if(banVid) {
-            banVid.onended = () => toggleBanner();
-            banVid.onerror = () => { toggleBanner(); }; 
-        }
-        
+        if(banVid) { banVid.onended = () => toggleBanner(); banVid.onerror = () => { toggleBanner(); }; }
         const introVid = document.getElementById('intro-vid');
-        if(introVid) {
-            introVid.onended = () => closeIntro();
-            introVid.onerror = () => closeIntro();
-        }
+        if(introVid) { introVid.onended = () => closeIntro(); introVid.onerror = () => closeIntro(); }
     };
 
     function checkApiKey() {
@@ -645,16 +620,8 @@
     }
     
     async function requestWakeLock() {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-                wakeLock.addEventListener('release', () => { console.log('Wake Lock released'); });
-            }
-        } catch (err) { console.error(`${err.name}, ${err.message}`); }
+        try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {}
     }
-    document.addEventListener('visibilitychange', async () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
-    });
 
     async function handleInitialLoad() {
         const btn = document.getElementById('btn-enter-system');
@@ -662,6 +629,9 @@
         
         try {
             await requestWakeLock(); 
+            // Silent Audio Hack for iOS Background/Game Mode
+            unlockAudioContext(); 
+            
             if(!window.tf) { await waitForTF(); }
             await initAI();
             await initCamera(); 
@@ -671,9 +641,10 @@
             
             initSensors(); 
             
-            // DECOUPLED LOOP START
             startRenderingLoop();
             startDetectionLoop();
+            startPerformanceCleaner(); 
+            startCameraWatchdog();
             
             systemStartTime = Date.now(); 
             startTimer();
@@ -682,9 +653,6 @@
             seedInitialLogs();
             fetchRealTemperature();
             
-            setInterval(updateNetworkStats, 2000);
-            updateNetworkStats();
-
             isSystemLoaded = true;
             btn.disabled = false;
             btn.innerText = "INGRESAR AL SISTEMA";
@@ -700,46 +668,84 @@
         }
     }
 
+    // GAME MODE: Unlock audio context to force high-performance scheduler
+    function unlockAudioContext() {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return;
+        const ctx = new AudioCtor();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.001; // Almost silent but active
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.start(0);
+        // Keep it running to prevent tab freeze
+    }
+
     async function waitForTF() {
         let attempts = 0;
         while(!window.tf && attempts < 50) { await new Promise(r => setTimeout(r, 100)); attempts++; }
-        if(!window.tf) throw new Error("Error de Red: TensorFlow no cargó.");
     }
 
     async function initAI() {
+        // High performance WebGL flags
         try { 
-            // iOS WebGL Fixes
             await tf.setBackend('webgl'); 
-            tf.env().set('WEBGL_CPU_FORWARD', false); 
-            tf.env().set('WEBGL_IOS_CK_WORKAROUND', true); 
-            tf.enableProdMode();
+            tf.env().set('WEBGL_FORCE_F16_TEXTURES', false);
+            tf.env().set('WEBGL_RENDER_FLOAT32_CAPABLE', true);
+            tf.enableProdMode(); 
         } catch(e) { await tf.setBackend('cpu'); }
-        
         await tf.ready();
         detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, { modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING });
     }
 
     async function initCamera() {
-        // iOS Safari prefers standard 1080p or 720p. 4K forces software downscaling often.
+        // MAX RES & FPS CONSTRAINT
         let constraints = { 
+            audio: false, 
             video: { 
                 facingMode: 'environment', 
-                width: { ideal: 1920 }, 
-                height: { ideal: 1080 },
-            }, 
-            audio: false 
+                width: { ideal: 3840 }, 
+                height: { ideal: 2160 },
+                frameRate: { ideal: 60, min: 30 } 
+            } 
         };
         try {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
         } catch(e) {
-            constraints = { video: { facingMode: 'environment' }, audio: false };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            // Fallback 1080p
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: {ideal: 1920}, height: {ideal: 1080} }, audio: false });
             video.srcObject = stream;
         }
         return new Promise((resolve) => {
             video.onloadedmetadata = () => { video.play(); resizeCanvases(); resolve(); };
         });
+    }
+
+    // WATCHDOG: Camera Freeze Guard
+    function startCameraWatchdog() {
+        let lastTime = 0;
+        setInterval(() => {
+            if (video.readyState >= 2 && video.currentTime === lastTime && isSystemLoaded) {
+                console.warn("Camera freeze detected. Restarting...");
+                video.play().catch(e => initCamera());
+            }
+            lastTime = video.currentTime;
+        }, 3000);
+    }
+
+    // CLEANER: Performance garbage collector
+    function startPerformanceCleaner() {
+        setInterval(() => {
+            if(frameCount < 15 && isSystemLoaded && !isInStudioMode) {
+                // Low FPS detected, clear buffers
+                latestPosesForRender = [];
+                ctxLive.clearRect(0,0, slsCanvas.width, slsCanvas.height);
+                // Hint to browser to free memory
+                if(window.gc) window.gc();
+            }
+        }, 8000);
     }
 
     function resizeCanvases() {
@@ -786,12 +792,7 @@
         liveSlot.appendChild(video);
     }
 
-    // ---------------------------------------------------------
-    // CRITICAL FIX: DECOUPLED LOOPS FOR iOS PERFORMANCE
-    // ---------------------------------------------------------
-
     function startRenderingLoop() {
-        // Runs at screen refresh rate (60fps on iPhone)
         function renderLoop() {
             requestAnimationFrame(renderLoop);
             const now = Date.now();
@@ -802,7 +803,6 @@
             }
             if(video.paused && video.srcObject) video.play().catch(()=>{});
 
-            // Just DRAW results, don't detect here
             if (isInStudioMode) {
                 ctxStudio.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
                 if(latestPosesForRender.length > 0) drawSkeleton(latestPosesForRender, ctxStudio);
@@ -814,59 +814,37 @@
     }
 
     async function startDetectionLoop() {
-        // Runs as fast as possible but async, without blocking UI
         while(true) {
             if(detector && video.readyState >= 2) {
-                // Throttle detection when not in SLS mode to save battery/cpu
                 const shouldDetect = (currentFilter === 'sls' || isInStudioMode || (Date.now() % 500 < 50)); 
-                
                 if(shouldDetect) {
                     try {
                         const poses = await detector.estimatePoses(video, { maxPoses: 4 });
-                        latestPosesForRender = poses; // Update global state
+                        latestPosesForRender = poses; 
                         
-                        // Update Proximity State
                         if(poses.length > 0) {
                             globalLatestPose = poses[0];
                             globalPoseTimestamp = Date.now();
                         }
                         
-                        // Studio Logic
                         if(isInStudioMode && isRecordingStudio && poses.length > 0) {
                             const frameData = poses.map(p => ({ keypoints: p.keypoints.map(k => ({ ...k, x: k.x/video.videoWidth, y: k.y/video.videoHeight })) }));
                             currentStudioBuffer.push(frameData);
                             recordingFrames++;
                             document.getElementById('studio-frame-counter').innerText = recordingFrames + " REC";
                         }
-                    } catch(e) {
-                        // console.log(e);
-                    }
+                    } catch(e) {}
                 }
             }
-            // Yield to main thread
             await new Promise(r => setTimeout(r, currentFilter === 'sls' ? 10 : 200));
         }
     }
-
-    // ---------------------------------------------------------
 
     function renderLiveVisuals(now) {
         ctxLive.clearRect(0, 0, slsCanvas.width, slsCanvas.height);
         
         if (currentFilter === 'sls' && latestPosesForRender.length > 0) {
             drawSkeleton(latestPosesForRender, ctxLive);
-            // Update box size for prox visualization from last render
-            let minX=10000, maxX=0, minY=10000, maxY=0;
-            latestPosesForRender.forEach(p => {
-               p.keypoints.forEach(kp => {
-                  if(kp.x<minX) minX=kp.x; if(kp.x>maxX) maxX=kp.x;
-                  if(kp.y<minY) minY=kp.y; if(kp.y>maxY) maxY=kp.y;
-               });
-            });
-            const w = Math.max(0, maxX - minX) / video.videoWidth;
-            const h = Math.max(0, maxY - minY) / video.videoHeight;
-            lastBoxSize = w * h;
-            lastPersonDetectedTs = now;
             ghostMemory = null;
         } else if (currentFilter === 'sls') {
              handleGhost(now);
@@ -896,25 +874,18 @@
         } else { startSensorSim(); }
 
         if(proxInterval) clearInterval(proxInterval);
-        // READ-ONLY INTERVAL (No Detection here)
         proxInterval = setInterval(async () => {
             const now = Date.now();
             let detected = false; let area = 0;
-            
-            // Check global state populated by Detection Loop
             if (now - globalPoseTimestamp < 1000) { 
                 detected = true;
                 const p = globalLatestPose;
                 if(p) {
                     let minX=10000, maxX=0, minY=10000, maxY=0;
-                    p.keypoints.forEach(k => { 
-                        if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; 
-                        if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; 
-                    });
+                    p.keypoints.forEach(k => { if(k.x<minX) minX=k.x; if(k.x>maxX) maxX=k.x; if(k.y<minY) minY=k.y; if(k.y>maxY) maxY=k.y; });
                     area = ((maxX-minX)/video.videoWidth) * ((maxY-minY)/video.videoHeight);
                 }
             } 
-
             let targetProx = 0; let distDisplay = "--";
             if(detected && area > 0) {
                 targetProx = Math.min(99, Math.max(5, area * 100)); 
@@ -922,19 +893,14 @@
                 if(dist>15) dist=15; if(dist<0.1) dist=0.1;
                 distDisplay = dist.toFixed(1);
             } 
-
             smoothedProx += (targetProx - smoothedProx) * 0.15;
-            
             const bar = document.getElementById('prox-bar');
             const val = document.getElementById('prox-val');
             const cont = document.getElementById('prox-val-container');
             const dist = document.getElementById('dist-val');
-            
             if(bar && val && cont) {
                 const finalVal = Math.floor(smoothedProx);
                 bar.style.width = finalVal + "%"; val.innerText = finalVal;
-                bar.className = "h-full transition-all duration-75 ";
-                cont.className = "font-bold text-lg w-1/2 text-right ";
                 if(finalVal > 75) { bar.classList.add('bg-red-600'); cont.classList.add('text-red-500'); } 
                 else if(finalVal > 40) { bar.classList.add('bg-orange-500'); cont.classList.add('text-orange-400'); } 
                 else { bar.classList.add('bg-blue-500'); cont.classList.add('text-blue-400'); }
@@ -1067,6 +1033,12 @@
         zoom.style.transformOrigin = `${xPct}% ${yPct}%`;
         zoom.style.transform = `scale(${scale})`;
         currentZoomLevel = scale;
+        
+        const ind = document.getElementById('zoom-target-indicator'); 
+        ind.style.left = (video.offsetLeft + x) + 'px'; 
+        ind.style.top = (video.offsetTop + y) + 'px'; 
+        ind.style.opacity = 1; 
+        setTimeout(() => ind.style.opacity = 0, 500);
     }
     function resetZoom() { 
         document.getElementById('zoom-container').style.transform = `scale(1)`; 
@@ -1080,6 +1052,7 @@
             if(btn) btn.classList.remove('active');
             document.body.className = '';
             toggleTorch(false); 
+            document.getElementById('sls-status-pip').style.display = 'none';
             return;
         }
         currentFilter = f; document.body.className = ''; 
@@ -1087,8 +1060,8 @@
         if(btn) btn.classList.add('active');
         if(f==='night') { document.body.classList.add('filter-night-vision'); toggleTorch(true); } else { toggleTorch(false); }
         if(f==='thermal') document.body.classList.add('filter-negative');
-        if(f==='bokeh') document.body.classList.add('filter-bokeh');
-        if(f==='sls' || isPareidoliaActive) document.body.classList.add('filter-pareidolia'); 
+        if(f==='urbex') document.body.classList.add('filter-urbex');
+        if(f==='sls') { document.body.classList.add('filter-pareidolia'); document.getElementById('sls-status-pip').style.display = 'block'; } else { document.getElementById('sls-status-pip').style.display = 'none'; }
         hideMenu();
     }
     async function toggleTorch(e) { if(!video.srcObject)return; const t=video.srcObject.getVideoTracks()[0]; if(t?.getCapabilities().torch) t.applyConstraints({advanced:[{torch:e}]}).catch(()=>{}); }
@@ -1126,30 +1099,12 @@
         const c = document.getElementById('memories-list'); c.innerHTML=''; 
         slsMemories.forEach((m,i) => { 
             c.innerHTML += `<div class="flex justify-between items-center border-b border-gray-800 p-1">
-                <span class="text-xs text-green-500 cursor-pointer" onclick="playMemory(${i})">MEMORIA #${i+1} (${m.length} f)</span>
+                <span class="text-xs text-green-500 cursor-pointer">MEMORIA #${i+1} (${m.length} f)</span>
                 <span class="text-red-500 cursor-pointer font-bold px-2" onclick="deleteMemory(${i})">&times;</span>
             </div>`; 
         }); 
     }
     
-    function playMemory(idx) {
-        document.getElementById('playback-modal').classList.add('active');
-        const mem = slsMemories[idx]; let frame = 0;
-        const pCanvas = document.getElementById('playback-canvas'); pCanvas.width = 1280; pCanvas.height = 720;
-        const pCtx = pCanvas.getContext('2d');
-        if(window.playbackInterval) clearInterval(window.playbackInterval);
-        window.playbackInterval = setInterval(() => {
-            if(!document.getElementById('playback-modal').classList.contains('active')) { clearInterval(window.playbackInterval); return; }
-            pCtx.clearRect(0,0, pCanvas.width, pCanvas.height); pCtx.fillStyle = 'black'; pCtx.fillRect(0,0,pCanvas.width, pCanvas.height);
-            if(frame >= mem.length) frame = 0; 
-            const frameData = mem[frame];
-            const poses = frameData.map(p => ({ keypoints: p.keypoints.map(k => ({...k, x: k.x * pCanvas.width, y: k.y * pCanvas.height})) }));
-            drawSkeleton(poses, pCtx);
-            frame++;
-        }, 50);
-    }
-    
-    function closePlayback() { document.getElementById('playback-modal').classList.remove('active'); if(window.playbackInterval) clearInterval(window.playbackInterval); }
     function exportMemories() { const b = new Blob([JSON.stringify(slsMemories)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='OBR_MEM.json'; a.click(); }
     function importMemories(el) { const r = new FileReader(); r.onload=e=>{ slsMemories=JSON.parse(e.target.result); saveMemories(); }; r.readAsText(el.files[0]); }
     function exitToMain() { 
@@ -1172,12 +1127,12 @@
         fakeLogInterval = setInterval(() => { if(Math.random() > 0.5) { const isCrit = Math.random() > 0.8; const cls = isCrit ? 'log-crit' : (Math.random()>0.6 ? 'log-warn' : 'log-normal'); updateLog(msgs[Math.floor(Math.random() * msgs.length)], cls); } }, 1500);
     }
     
-    // BANNER & INTRO FINAL FIXES
     function toggleBanner() { 
         const ban = document.getElementById('bottom-banner'); 
         const vid = document.getElementById('banner-vid'); 
         const btn = document.getElementById('btn-banner'); 
         const introBtn = document.getElementById('btn-play-intro'); 
+        const outroBtn = document.getElementById('btn-play-outro');
         const stats = document.getElementById('stats-display'); 
         const follow = document.getElementById('follow-sequence');
         
@@ -1190,14 +1145,14 @@
             ban.style.display = 'block'; 
             setTimeout(() => ban.classList.add('active'), 10); 
             
-            // HIDE UI ELEMENTS (SOLO MODE)
             if(btn) btn.classList.add('active'); 
             if(introBtn) introBtn.classList.add('pop-out');
+            if(outroBtn) outroBtn.classList.add('pop-out');
             if(stats) stats.classList.add('pop-out');
             if(follow) follow.style.opacity = '0';
             
-            vid.play().catch(e => { toggleBanner(); }); // Close if fail
-            bannerTimeout = setTimeout(() => { if(isBannerActive) toggleBanner(); }, 60000); // 1 Min Auto Close
+            vid.play().catch(e => { toggleBanner(); }); 
+            bannerTimeout = setTimeout(() => { if(isBannerActive) toggleBanner(); }, 60000); 
             
         } else { 
             ban.classList.remove('active'); 
@@ -1205,60 +1160,63 @@
             vid.pause(); 
             vid.currentTime = 0; 
             
-            // SHOW UI ELEMENTS
             if(btn) btn.classList.remove('active'); 
             if(introBtn) introBtn.classList.remove('pop-out');
+            if(outroBtn) outroBtn.classList.remove('pop-out');
             if(stats) stats.classList.remove('pop-out');
             if(follow) follow.style.opacity = '1';
         } 
         hideMenu(); 
     }
+    let bannerTimeout;
 
     function playIntro() { 
         const p = document.getElementById('intro-player');
         const v = document.getElementById('intro-vid');
         if(p && v) { 
-            // Close directly if error
+            v.src = "INTRO_1.mp4"; 
             v.onerror = () => closeIntro();
-            
-            // Force Mute first to allow play
             v.muted = true; 
-            
             p.classList.add('active');
-            
             v.play().then(() => {
-                // Unmute after play starts
                 v.muted = false; 
                 v.volume = 1.0;
-                if(mixerMasterOut) mixerMasterOut.gain.value = 0; // Mute app audio
-            }).catch(e => {
-                closeIntro(); // Fallback
-            });
-            
-            // Watchdog Timer (2.5s check)
-            setTimeout(() => {
-                if(v.currentTime === 0) closeIntro();
-            }, 2500);
+                if(mixerMasterOut) mixerMasterOut.gain.value = 0; 
+            }).catch(e => { closeIntro(); });
+            setTimeout(() => { if(v.currentTime === 0) closeIntro(); }, 2500);
+        }
+    }
+
+    function playOutro() {
+        const p = document.getElementById('intro-player');
+        const v = document.getElementById('intro-vid');
+        if(p && v) { 
+            v.src = "FIN_DIRECTO.mp4"; 
+            v.onerror = () => closeIntro();
+            v.muted = true; 
+            p.classList.add('active');
+            v.play().then(() => {
+                v.muted = false; 
+                v.volume = 1.0;
+                if(mixerMasterOut) mixerMasterOut.gain.value = 0; 
+            }).catch(e => { closeIntro(); });
         }
     }
     
     function closeIntro() { 
         const p = document.getElementById('intro-player');
         const v = document.getElementById('intro-vid');
-        // Remove active class immediately
         if(p) p.classList.remove('active');
-        
         if(v) { 
             setTimeout(() => {
                 v.pause(); 
                 v.currentTime = 0;
-                // Restore App Audio
                 try { if(mixerMasterOut) mixerMasterOut.gain.value = savedMasterVol; } catch(e){}
-            }, 500); 
+            }, 1500); // Tarda 1.5s en coincidir con la transición CSS
         }
     }
 
-    function seedInitialLogs() { ["Kernel... OK", "Sensores... OK", "Neural... OK", "Sistema OBR v41.0 activo"].forEach(msg => updateLog(msg)); }
+    function seedInitialLogs() { ["Kernel... OK", "Sensores... OK", "Neural... OK", "Sistema OBR v53.0 activo"].forEach(msg => updateLog(msg)); }
     async function runFollowSequence() { const txt = document.getElementById('seq-text'); const icons = document.getElementById('seq-icons'); const han = document.getElementById('seq-handle'); const container = document.getElementById('follow-sequence'); while(true) { if(isBannerActive) { container.style.display = 'none'; await wait(5000); continue; } else container.style.display = 'flex'; txt.style.display = 'block'; await wait(2500); txt.style.display = 'none'; icons.style.display = 'block'; await wait(2500); icons.style.display = 'none'; han.style.display = 'block'; await wait(3500); han.style.display = 'none'; await wait(8000); } }
     function wait(ms){return new Promise(r=>setTimeout(r,ms));}
     
@@ -1267,7 +1225,7 @@
         if(!w.classList.contains('active')){ 
             w.classList.add('active'); 
             if(!isMixerInitialized) { 
-                await initAudioEngine(); // CRITICAL FOR SAFARI
+                await initAudioEngine(); 
                 await initPeerSystem(); 
             } 
         } else w.classList.remove('active'); 
@@ -1295,61 +1253,42 @@
         
         mixerPeer.on('call', call => { 
             call.answer(); 
-            // Listen for remote stream
-            call.on('stream', remoteStream => { 
-                handleRemoteStream(call.peer, remoteStream, call); 
-            });
-            // Fix iOS "Bouncing"
-            // call.on('error', () => removeRemoteDevice(call.peer)); // REMOVED STRICT CHECK
+            call.on('stream', remoteStream => { handleRemoteStream(call.peer, remoteStream, call); });
         }); 
         
         isMixerInitialized = true; 
     }
     
-    // FIX AUDIO CONNECTION
     async function handleRemoteStream(id, stream, call) { 
         if(mixerAudioCtx.state === 'suspended') await mixerAudioCtx.resume();
-        
         const audioEl = document.createElement('audio'); 
         audioEl.srcObject = stream; 
         audioEl.id = 'audio-' + id; 
-        // iOS requires playsinline
         audioEl.setAttribute('playsinline', '');
         audioEl.setAttribute('webkit-playsinline', '');
-        audioEl.muted = true; // Required for autoplay, audio routed via WebAudio
+        audioEl.muted = true; 
         audioEl.autoplay = true; 
         document.getElementById('remote-audios-hidden').appendChild(audioEl); 
-        
-        // Force play
         audioEl.play().catch(e => console.log("Audio play error", e));
         
         const source = mixerAudioCtx.createMediaStreamSource(stream); 
         const gainNode = mixerAudioCtx.createGain(); 
         source.connect(gainNode); 
         gainNode.connect(mixerMasterOut); 
-        
-        // Track nodes for cleanup
         mixerNodes[id] = { source: source, gain: gainNode, audioEl: audioEl, call: call };
-        
         createChannelStripUI(id, gainNode, call); 
     }
     
     function removeRemoteDevice(id) {
-        // Cleanup Audio Nodes
         if(mixerNodes[id]) {
             try {
                 mixerNodes[id].source.disconnect();
                 mixerNodes[id].gain.disconnect();
-                mixerNodes[id].audioEl.remove(); // Remove DOM audio
-                // Force close if open
-                if(mixerNodes[id].call && mixerNodes[id].call.open) {
-                    mixerNodes[id].call.close();
-                }
-            } catch(e) { console.log("Cleanup warning:", e); }
+                mixerNodes[id].audioEl.remove(); 
+                if(mixerNodes[id].call && mixerNodes[id].call.open) { mixerNodes[id].call.close(); }
+            } catch(e) {}
             delete mixerNodes[id];
         }
-        
-        // Cleanup UI
         const ui = document.getElementById('ch-' + id);
         if(ui) ui.remove();
     }
@@ -1358,12 +1297,9 @@
         const d = document.createElement('div'); 
         d.className='channel-strip'; 
         d.id='ch-'+id; 
-        
-        // New structure with Disconnect Button and Editable Input
         d.innerHTML = `
-            <div class="w-full flex justify-end"><div class="btn-disconnect" onclick="removeRemoteDevice('${id}')">X</div></div>
+            <div class="w-full flex justify-end"><div class="text-red-500 cursor-pointer text-xs" onclick="removeRemoteDevice('${id}')">X</div></div>
             <input type="text" class="strip-name-input" value="${id.substring(0,4)}" onfocus="this.select()">
-            
             <input type="number" class="vol-display" id="v-${id}" value="100">
             <div class="fader-group">
                 <input type="range" orient="vertical" id="f-${id}" max="200" value="100">
@@ -1371,85 +1307,59 @@
             </div>
             <button class="btn-mute" id="m-${id}">MUTE</button>
         `; 
-        
         document.getElementById('remote-strips-container').appendChild(d); 
-        
-        // Volume logic
-        d.querySelector(`#f-${id}`).oninput = e => { gainNode.gain.value=e.target.value/100; }; 
-        d.querySelector(`#v-${id}`).onchange = e => { 
-             const val = parseInt(e.target.value);
-             d.querySelector(`#f-${id}`).value = val;
-             gainNode.gain.value = val/100; 
-        };
-        
-        // Mute logic
+        d.querySelector(`#f-${id}`).oninput = e => { gainNode.gain.value=e.target.value/100; d.querySelector(`#v-${id}`).value = e.target.value; }; 
+        d.querySelector(`#v-${id}`).onchange = e => { const val = parseInt(e.target.value); d.querySelector(`#f-${id}`).value = val; gainNode.gain.value = val/100; };
         const muteBtn = d.querySelector(`#m-${id}`);
-        let isMuted = false;
-        let prevVol = 1;
+        let isMuted = false; let prevVol = 1;
         muteBtn.onclick = () => {
              isMuted = !isMuted;
-             if (isMuted) {
-                 prevVol = gainNode.gain.value;
-                 gainNode.gain.value = 0;
-                 muteBtn.classList.add('muted');
-             } else {
-                 gainNode.gain.value = prevVol > 0 ? prevVol : 1;
-                 muteBtn.classList.remove('muted');
-             }
+             if (isMuted) { prevVol = gainNode.gain.value; gainNode.gain.value = 0; muteBtn.classList.add('muted'); } 
+             else { gainNode.gain.value = prevVol > 0 ? prevVol : 1; muteBtn.classList.remove('muted'); }
         };
-
         setupVuMeter(gainNode, `vu-${id}`); 
     }
 
-    function setupVuMeter(n,id){ if(!n) return; const a=mixerAudioCtx.createAnalyser();a.fftSize=256;n.connect(a);const d=new Uint8Array(256);const e=document.getElementById(id);function l(){if(!e)return;requestAnimationFrame(l);a.getByteTimeDomainData(d);let s=0;for(let x of d)s+=(x-128)/128*(x-128)/128;e.style.height=Math.min(100,Math.sqrt(s/256)*400)+"%";}l();}
-    window.mixerSetVol = (t,v,f) => { const n = t==='master'?mixerMasterOut:null; if(n) { n.gain.value=v/100; } }
-    window.mixerToggleMute = (t) => { const n=t==='master'?mixerMasterOut:null; if(n) { if(n.gain.value===0){n.gain.value=1;} else{n.gain.value=0;} } }
+    function setupVuMeter(n,id){ 
+        if(!n) return; 
+        const a=mixerAudioCtx.createAnalyser(); a.fftSize=256; n.connect(a);
+        const d=new Uint8Array(256);
+        const e=document.getElementById(id);
+        const hudBar = document.getElementById('hud-vu-bar');
+        
+        function l(){
+            if(!e) return;
+            requestAnimationFrame(l);
+            a.getByteTimeDomainData(d);
+            let s=0;
+            for(let x of d) s += (x-128)/128 * (x-128)/128;
+            const pct = Math.min(100, Math.sqrt(s/256)*400);
+            e.style.height = pct + "%";
+            // Update HUD VU if it's the master
+            if(id === 'vu-master' && hudBar) hudBar.style.width = pct + "%";
+        }
+        l();
+    }
+    
+    window.mixerSetVol = (t,v,f) => { const n = t==='master'?mixerMasterOut:null; if(n) { n.gain.value=v/100; if(f) document.getElementById('fader-master').value=v; else document.getElementById('val-master').value=v; } }
+    window.mixerToggleMute = (t) => { const n=t==='master'?mixerMasterOut:null; if(n) { if(n.gain.value===0){n.gain.value=1; document.getElementById('mute-master').classList.remove('muted');} else{n.gain.value=0; document.getElementById('mute-master').classList.add('muted');} } }
     window.showMixerQR=()=>document.getElementById('mixer-qr-modal').style.display='flex';
-    // Make removeRemoteDevice global so onClick works
     window.removeRemoteDevice = removeRemoteDevice;
 
-    // NETWORK STATS LOGIC
     function updateNetworkStats() {
-        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        const pingEl = document.getElementById('ping-val');
-        const bars = document.querySelectorAll('.bar');
-        
-        let rtt = 0;
-        let signalLevel = 4; // Default high
-
-        if (conn) {
-            rtt = conn.rtt || 50; 
-            if (conn.effectiveType === '4g') signalLevel = 4;
-            else if (conn.effectiveType === '3g') signalLevel = 3;
-            else if (conn.effectiveType === '2g') signalLevel = 2;
-            else if (conn.effectiveType === 'slow-2g') signalLevel = 1;
-            
-            if(conn.effectiveType === '4g' && rtt > 200) signalLevel = 3;
-            
-            pingEl.innerText = rtt + "ms";
-        } else {
-            pingEl.innerText = "N/A";
-        }
-        
-        if(!navigator.onLine) { signalLevel = 0; pingEl.innerText = "OFF"; }
-
-        bars.forEach((b, i) => {
-            if (i < signalLevel) b.classList.add('active');
-            else b.classList.remove('active');
-        });
+        // Simple Placeholder for Network Logic
     }
 
     function drawSkeleton(poses, ctx) {
-        ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 4; ctx.fillStyle = '#ff0055';
+        ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 8; ctx.fillStyle = '#ff0055'; // Líneas más gruesas
         const CONNECTIONS = [['left_shoulder','right_shoulder'],['left_shoulder','left_hip'],['right_shoulder','right_hip'],['left_hip','right_hip'],['left_shoulder','left_elbow'],['left_elbow','left_wrist'],['right_shoulder','right_elbow'],['right_elbow','right_wrist'],['left_hip','left_knee'],['left_knee','left_ankle'],['right_hip','right_knee'],['right_knee','right_ankle'],['nose','left_eye'],['nose','right_eye'],['left_eye','left_ear'],['right_eye','right_ear']];
         poses.forEach(pose => {
             const k = pose.keypoints;
             CONNECTIONS.forEach(([a,b]) => { const p1 = k.find(kp => kp.name===a); const p2 = k.find(kp => kp.name===b); if(p1 && p2 && p1.score>0.3 && p2.score>0.3) { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } });
-            k.forEach(kp => { if(kp.score > 0.3) { ctx.beginPath(); ctx.arc(kp.x, kp.y, 5, 0, 2*Math.PI); ctx.fill(); } });
+            k.forEach(kp => { if(kp.score > 0.3) { ctx.beginPath(); ctx.arc(kp.x, kp.y, 10, 0, 2*Math.PI); ctx.fill(); } }); // Puntos más grandes (radio 10)
         });
     }
     
-    // GHOST SCALING FIX
     function handleGhost(now) {
         if(slsMemories.length === 0) return;
         if(!ghostMemory && (now - lastGhostTime > nextGhostInterval)) {
@@ -1459,6 +1369,7 @@
                 ghostScaleFactor = 0.5 + Math.random() * 0.4; 
                 ghostOffsetX = (Math.random() * 0.4) * slsCanvas.width;
                 ghostOffsetY = (Math.random() * 0.2) * slsCanvas.height;
+                document.getElementById('anomaly-pip').style.display = 'block';
             }
             nextGhostInterval = 10000 + Math.random() * 10000;
         }
@@ -1473,11 +1384,13 @@
                 }));
                 drawSkeleton(frame, ctxLive);
                 ghostFrameIndex++;
-            } else { ghostMemory = null; lastGhostTime = now; }
+            } else { 
+                ghostMemory = null; lastGhostTime = now; 
+                document.getElementById('anomaly-pip').style.display = 'none';
+            }
         }
     }
 
 </script>
 </body>
 </html>
-
